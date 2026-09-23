@@ -28,7 +28,7 @@ export default function Login({ onLogin }: { onLogin: (u: string) => void }) {
           <span className="brand-dot" />
           Hobbyx <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>Order Lookup</span>
         </div>
-        <h1>Welcome back</h1>
+        <h1>Welcome</h1>
         <p className="lede">Sign in to look up an order status.</p>
         <label htmlFor="u">Username</label>
         <input
