@@ -1,0 +1,15 @@
+[Unit]
+Description=Hobbyx Order Lookup
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/order-lookup/order-lookup
+EnvironmentFile=/opt/order-lookup/.env
+ExecStart=/usr/bin/node dist-server/index.js
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target
