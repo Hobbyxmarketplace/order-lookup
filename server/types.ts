@@ -4,6 +4,18 @@ export interface LookupResult {
   status: string;
   status_date: string | null;
   submission_number: string | null;
+
+  owner_email: string | null;
+  owner_login: string | null;
+  owner_registered: string | null;
+
+  date_arrived: string | null;
+  date_completed: string | null;
+  pickup_ready_at: string | null;
+  pickup_date: string | null;
+
+  service_level: string | null;
+  is_reholder_or_crc: boolean;
 }
 
 export interface TableInfo {

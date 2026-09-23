@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { api, LookupResult } from "../api";
+import Stepper from "../components/Stepper";
 
 function statusSlug(status: string): string {
   return status.toLowerCase().replace(/\s+/g, "-");
 }
 
-function formatDate(v: unknown): string {
+function fmtDate(v: unknown): string {
   if (v == null || v === "") return "-";
   const d = new Date(v as string);
   if (isNaN(d.getTime())) return String(v);
@@ -14,6 +15,13 @@ function formatDate(v: unknown): string {
     month: "short",
     year: "numeric",
   });
+}
+
+function fmtYear(v: string | null): string {
+  if (!v) return "-";
+  const d = new Date(v);
+  if (isNaN(d.getTime())) return v.slice(0, 4);
+  return String(d.getFullYear());
 }
 
 function dateLabel(status: string): string {
@@ -89,23 +97,66 @@ export default function Lookup() {
       {err && !busy && <div className="notice error">{err}</div>}
 
       {result && !busy && (
-        <div className="result" data-status={statusSlug(result.status)}>
-          <div className="row">
-            <div className="col">
-              <span className="label">Grading</span>
-              <span className="value company">{result.grading_company}</span>
+        <>
+          <section className="result" data-status={statusSlug(result.status)}>
+            <div className="row">
+              <div className="col">
+                <span className="label">Grading</span>
+                <span className="value company">{result.grading_company}</span>
+              </div>
+              <div className="col">
+                <span className="label">Status</span>
+                <span className="value status">{result.status}</span>
+              </div>
+              <div className="col">
+                <span className="label">{dateLabel(result.status)}</span>
+                <span className="value">{fmtDate(result.status_date)}</span>
+              </div>
             </div>
-            <div className="col">
-              <span className="label">Status</span>
-              <span className="value status">{result.status}</span>
+            <div className="invoice-echo">
+              Invoice #{result.invoice}
+              {result.submission_number && (
+                <> - Submission #{result.submission_number}</>
+              )}
+              {result.service_level && <> - {result.service_level}</>}
             </div>
-            <div className="col">
-              <span className="label">{dateLabel(result.status)}</span>
-              <span className="value">{formatDate(result.status_date)}</span>
-            </div>
-          </div>
-          <div className="invoice-echo">Invoice #{result.invoice}</div>
-        </div>
+          </section>
+
+          {(result.owner_email || result.owner_login) && (
+            <section className="user-card">
+              <h2>Customer</h2>
+              <div className="kv">
+                {result.owner_email && (
+                  <>
+                    <div className="k">Email</div>
+                    <div className="v">
+                      <a href={`mailto:${result.owner_email}`}>
+                        {result.owner_email}
+                      </a>
+                    </div>
+                  </>
+                )}
+                {result.owner_login && (
+                  <>
+                    <div className="k">Username</div>
+                    <div className="v">{result.owner_login}</div>
+                  </>
+                )}
+                {result.owner_registered && (
+                  <>
+                    <div className="k">Member since</div>
+                    <div className="v">{fmtYear(result.owner_registered)}</div>
+                  </>
+                )}
+              </div>
+            </section>
+          )}
+
+          <section className="stepper-card">
+            <h2>Progress</h2>
+            <Stepper result={result} />
+          </section>
+        </>
       )}
     </div>
   );

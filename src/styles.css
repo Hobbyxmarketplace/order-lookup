@@ -442,10 +442,137 @@ input:focus, select:focus, textarea:focus {
 }
 
 /* ==============================================================
+   User info card + section headings
+   ============================================================== */
+
+.user-card,
+.stepper-card {
+  margin-top: var(--s-md);
+  padding: var(--s-lg) var(--s-xl);
+  border: var(--b-hairline) solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--card);
+  box-shadow: var(--shadow-sm);
+  animation: fadeUp 0.4s ease-out both;
+}
+.user-card h2,
+.stepper-card h2 {
+  font: 700 13px/1.3 var(--font-sans);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted-fg);
+  margin: 0 0 var(--s-md);
+}
+.user-card .kv {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  gap: var(--s-sm) var(--s-md);
+  font-size: 14px;
+}
+.user-card .kv .k { color: var(--muted-fg); font-weight: 500; }
+.user-card .kv .v { color: var(--card-fg); word-break: break-word; }
+.user-card .kv .v a { color: var(--info-fg); }
+
+/* ==============================================================
+   Stepper (mirrors hobbyx-app GradingDetailStepper)
+   ============================================================== */
+
+.stepper {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  position: relative;
+}
+.step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: var(--s-sm);
+  padding: 0 0 var(--s-md);
+  min-height: 44px;
+}
+.step:last-child { padding-bottom: 0; }
+.step-line {
+  position: absolute;
+  left: 15px;
+  top: 24px;
+  bottom: 0;
+  width: 2px;
+  background: var(--border);
+  z-index: 0;
+}
+.step:last-child .step-line { display: none; }
+.step-dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--card);
+  border: 2px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--muted-fg);
+  z-index: 1;
+  transition: background 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
+  margin-top: 1px;
+}
+.step-body { min-width: 0; padding-top: 1px; }
+.step-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: var(--s-sm);
+}
+.step-label {
+  font: 500 14px/1.3 var(--font-sans);
+  color: var(--muted-fg);
+}
+.step-date {
+  font: 500 12px/1.3 var(--font-sans);
+  color: var(--muted-fg);
+  white-space: nowrap;
+}
+.step-desc {
+  margin-top: var(--s-2xs);
+  font-size: 13px;
+  color: var(--muted-fg);
+}
+
+/* done state */
+.step--done .step-dot {
+  background: var(--fg);
+  border-color: var(--fg);
+  color: var(--bg);
+}
+.step--done .step-label { color: var(--fg); font-weight: 600; }
+.step--done .step-date { color: var(--fg); }
+.step--done ~ .step .step-line,
+.step--done .step-line { background: color-mix(in srgb, var(--fg) 40%, var(--border)); }
+
+/* current state */
+.step--current .step-dot {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-fg);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 20%, transparent);
+}
+.step--current .step-label { color: var(--fg); font-weight: 700; }
+.step--current .step-date { color: var(--primary); font-weight: 600; }
+
+/* picked (final, success) */
+.step--picked .step-dot {
+  background: var(--success-fg);
+  border-color: var(--success-fg);
+  color: var(--primary-fg);
+}
+.step--picked .step-label { color: var(--success-fg); font-weight: 700; }
+.step--picked .step-date { color: var(--success-fg); font-weight: 600; }
+
+/* invoice-echo tweak so the meta line breaks nicely */
+.result .invoice-echo { line-height: 1.5; }
+
+/* ==============================================================
    Responsive
    ============================================================== */
 
 @media (max-width: 560px) {
   .result .row { grid-template-columns: 1fr; gap: var(--s-md); }
   .lookup h1 { font-size: 26px; }
+  .user-card .kv { grid-template-columns: 100px 1fr; }
 }
