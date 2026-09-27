@@ -210,13 +210,15 @@ export function assignInvoice(
   invoice: string,
   zoneId: number,
   ctx: MoveContext
-): void {
+): { changed: boolean } {
   const zone = getZone(zoneId);
   if (!zone) throw new Error("Zone not found");
+  let changed = false;
   const tx = db.transaction(() => {
     const prev = currentZoneStmt.get(invoice) as
       | { zone_id: number }
       | undefined;
+    if (prev?.zone_id === zoneId) return;
     upsertStmt.run(invoice, zoneId);
     auditStmt.run(
       invoice,
@@ -226,24 +228,31 @@ export function assignInvoice(
       ctx.actorIp,
       snipUa(ctx.userAgent)
     );
+    changed = true;
   });
   tx();
+  return { changed };
 }
 
 export function assignInvoicesBulk(
   invoices: string[],
   zoneId: number,
   ctx: MoveContext
-): { updated: number } {
+): { updated: number; skipped: number } {
   const zone = getZone(zoneId);
   if (!zone) throw new Error("Zone not found");
   const ua = snipUa(ctx.userAgent);
   const tx = db.transaction((rows: string[]) => {
-    let n = 0;
+    let updated = 0;
+    let skipped = 0;
     for (const inv of rows) {
       const prev = currentZoneStmt.get(inv) as
         | { zone_id: number }
         | undefined;
+      if (prev?.zone_id === zoneId) {
+        skipped++;
+        continue;
+      }
       upsertStmt.run(inv, zoneId);
       auditStmt.run(
         inv,
@@ -253,11 +262,11 @@ export function assignInvoicesBulk(
         ctx.actorIp,
         ua
       );
-      n++;
+      updated++;
     }
-    return n;
+    return { updated, skipped };
   });
-  return { updated: tx(invoices) };
+  return tx(invoices);
 }
 
 export interface AuditRow {

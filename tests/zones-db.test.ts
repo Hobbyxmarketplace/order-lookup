@@ -128,14 +128,32 @@ describe("invoice assignment", () => {
       CTX
     );
     expect(r.updated).toBe(3);
+    expect(r.skipped).toBe(0);
     const map = getZonesForInvoices(["H100001", "H100002", "H100003"]);
     expect(map.size).toBe(3);
     for (const z of map.values()) expect(z.name).toBe("Back shelf");
   });
 
+  it("assignInvoicesBulk skips invoices already in the target zone", () => {
+    const back = listZones().find((z) => z.name === "Back shelf")!;
+    // H100001..3 are already in Back shelf from the previous test.
+    // Add one that's in a different zone.
+    const a = listZones().find((z) => z.name === "Zone A")!;
+    assignInvoice("H100004", a.id, CTX);
+
+    const r = assignInvoicesBulk(
+      ["H100001", "H100002", "H100003", "H100004"],
+      back.id,
+      CTX
+    );
+    expect(r.updated).toBe(1);
+    expect(r.skipped).toBe(3);
+  });
+
   it("bulk assignment updates invoice_count on listZones", () => {
     const back = listZones().find((z) => z.name === "Back shelf")!;
-    expect(back.invoice_count).toBe(3);
+    // H100001..3 from the first bulk + H100004 from the skip-test = 4
+    expect(back.invoice_count).toBe(4);
   });
 });
 

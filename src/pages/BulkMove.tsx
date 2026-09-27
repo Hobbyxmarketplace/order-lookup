@@ -40,6 +40,12 @@ export default function BulkMove() {
   const [zoneFilter, setZoneFilter] = useState<Set<number>>(new Set());
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  // Zone that each selected invoice was in AT THE TIME it was ticked.
+  // Preserved across page changes so we can show accurate "N already in
+  // target" counts for the full selection, not just the current page.
+  const [selectedZones, setSelectedZones] = useState<Map<string, number>>(
+    new Map()
+  );
   const [targetZoneId, setTargetZoneId] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -132,52 +138,71 @@ export default function BulkMove() {
     });
   }
 
-  function toggle(inv: string) {
+  function toggle(item: ReadyPickupItem) {
     setSelected((prev) => {
       const s = new Set(prev);
-      if (s.has(inv)) s.delete(inv);
-      else s.add(inv);
+      if (s.has(item.invoice)) s.delete(item.invoice);
+      else s.add(item.invoice);
       return s;
+    });
+    setSelectedZones((prev) => {
+      const m = new Map(prev);
+      if (m.has(item.invoice)) m.delete(item.invoice);
+      else m.set(item.invoice, item.zone.id);
+      return m;
     });
   }
 
   function togglePage() {
+    const allSelected = items.every((i) => selected.has(i.invoice));
     setSelected((prev) => {
       const s = new Set(prev);
-      const allSelected = items.every((i) => s.has(i.invoice));
-      if (allSelected) {
-        for (const i of items) s.delete(i.invoice);
-      } else {
-        for (const i of items) s.add(i.invoice);
+      for (const i of items) {
+        if (allSelected) s.delete(i.invoice);
+        else s.add(i.invoice);
       }
       return s;
     });
+    setSelectedZones((prev) => {
+      const m = new Map(prev);
+      for (const i of items) {
+        if (allSelected) m.delete(i.invoice);
+        else m.set(i.invoice, i.zone.id);
+      }
+      return m;
+    });
   }
 
-  const selectedList = useMemo(
-    () => items.filter((i) => selected.has(i.invoice)),
-    [items, selected]
-  );
-  const toMove = selectedList.filter((i) => i.zone.id !== targetZoneId);
-  const alreadyThere = selectedList.length - toMove.length;
+  // Count of selected invoices whose remembered zone equals the target.
+  // Covers on-page AND off-page selections since we snapshot the zone at
+  // tick-time. Works even when the current page shows none of them.
+  const alreadyInTarget = useMemo(() => {
+    if (targetZoneId == null) return 0;
+    let n = 0;
+    for (const zid of selectedZones.values()) {
+      if (zid === targetZoneId) n++;
+    }
+    return n;
+  }, [selectedZones, targetZoneId]);
+  const allSelectionsAreNoOp =
+    selected.size > 0 && alreadyInTarget === selected.size;
 
   async function runMove() {
-    if (targetZoneId == null || toMove.length === 0) return;
+    if (targetZoneId == null || selected.size === 0) return;
     setBusy(true);
     setErr(null);
     setMsg(null);
     try {
-      const r = await api.bulkMoveInvoices(
-        toMove.map((i) => i.invoice),
-        targetZoneId
-      );
+      const invoicesToSend = Array.from(selected);
+      const r = await api.bulkMoveInvoices(invoicesToSend, targetZoneId);
       const z = zones?.find((x) => x.id === targetZoneId);
       const parts = [`Moved ${r.updated} invoice(s) to ${z?.name ?? "zone"}.`];
-      if (alreadyThere > 0) {
-        parts.push(`${alreadyThere} already there — skipped.`);
+      if (r.skipped > 0) {
+        parts.push(`${r.skipped} already there — skipped.`);
       }
       setMsg(parts.join(" "));
       setSelected(new Set());
+      setSelectedZones(new Map());
       setConfirming(false);
       await refresh();
     } catch (e: any) {
@@ -318,7 +343,7 @@ export default function BulkMove() {
                   <input
                     type="checkbox"
                     checked={selected.has(it.invoice)}
-                    onChange={() => toggle(it.invoice)}
+                    onChange={() => toggle(it)}
                   />
                 </td>
                 <td className="mono">{it.invoice}</td>
@@ -360,10 +385,10 @@ export default function BulkMove() {
         <div className="bulk-actions">
           <span>
             {selected.size} selected
-            {alreadyThere > 0 && (
+            {alreadyInTarget > 0 && (
               <span className="muted">
                 {" "}
-                ({alreadyThere} already in target)
+                ({alreadyInTarget} already in target)
               </span>
             )}
           </span>
@@ -380,21 +405,28 @@ export default function BulkMove() {
           </select>
           <button
             className="primary"
-            disabled={busy || targetZoneId == null || toMove.length === 0}
+            disabled={
+              busy ||
+              targetZoneId == null ||
+              selected.size === 0 ||
+              allSelectionsAreNoOp
+            }
             onClick={() => setConfirming(true)}
             title={
-              toMove.length === 0
+              allSelectionsAreNoOp
                 ? "All selected invoices are already in this zone"
                 : undefined
             }
           >
-            {busy
-              ? "Moving..."
-              : toMove.length === selected.size
-                ? "Move selected"
-                : `Move ${toMove.length}`}
+            {busy ? "Moving..." : `Move ${selected.size}`}
           </button>
-          <button onClick={() => setSelected(new Set())} disabled={busy}>
+          <button
+            onClick={() => {
+              setSelected(new Set());
+              setSelectedZones(new Map());
+            }}
+            disabled={busy}
+          >
             Clear selection
           </button>
         </div>
@@ -402,21 +434,15 @@ export default function BulkMove() {
 
       {confirming && targetZoneId != null && (
         <ConfirmDialog
-          title={`Move ${toMove.length} invoice(s)?`}
+          title={`Move ${selected.size} invoice(s)?`}
           message={
             <>
-              This will move <strong>{toMove.length}</strong> invoice(s) to{" "}
+              This will move <strong>{selected.size}</strong> invoice(s) to{" "}
               <strong>
                 {zones?.find((z) => z.id === targetZoneId)?.name ?? "zone"}
               </strong>
-              {alreadyThere > 0 && (
-                <>
-                  {". "}
-                  {alreadyThere} of the selected invoice(s) are already in this
-                  zone and will be skipped
-                </>
-              )}
-              .
+              . Any that are already in this zone will be skipped
+              automatically.
             </>
           }
           confirmLabel="Move"

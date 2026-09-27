@@ -93,9 +93,13 @@ router.post("/invoices/bulk-move", authGate, (req, res) => {
       .json({ error: "None of the selected invoice numbers are valid." });
   }
   try {
-    const { updated } = assignInvoicesBulk(clean, zoneId as number, moveCtx(req));
+    const { updated, skipped } = assignInvoicesBulk(
+      clean,
+      zoneId as number,
+      moveCtx(req)
+    );
     for (const inv of clean) invalidateLookupCache(inv);
-    res.json({ ok: true, updated });
+    res.json({ ok: true, updated, skipped });
   } catch (e: any) {
     if (/not found/i.test(e.message)) {
       return res.status(400).json({
@@ -132,12 +136,18 @@ router.get("/invoices/ready-for-pickup", authGate, async (req, res) => {
   const zoneFilter = new Set<number>(zoneIdList);
 
   try {
+    // Support digits-only search too: user can type "131055" to match "H131055".
+    // Empty digits string keeps the OR arm inert (matches nothing) because we
+    // wrap it with %; when search is empty we bail before the LIKE anyway.
+    const digitsOnly = search.replace(/\D/g, "");
+    const digitsLike = digitsOnly ? `%${digitsOnly}%` : "\x00"; // sentinel that never matches
+
     const rows = await query<{
       invoice_number: string;
       submission_number: string | number | null;
       owner_email: string | null;
       pickup_ready_at: string | null;
-    }>(LIST_ALL_SQL, [search, like]);
+    }>(LIST_ALL_SQL, [search, like, digitsLike]);
 
     const invoices = rows.map((r) => r.invoice_number);
     const zoneMap = getZonesForInvoices(invoices);

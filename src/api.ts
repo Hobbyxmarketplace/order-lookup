@@ -155,10 +155,13 @@ export const api = {
       { method: "POST", body: JSON.stringify({ zoneId }) }
     ),
   bulkMoveInvoices: (invoices: string[], zoneId: number) =>
-    req<{ ok: true; updated: number }>("/api/invoices/bulk-move", {
-      method: "POST",
-      body: JSON.stringify({ invoices, zoneId }),
-    }),
+    req<{ ok: true; updated: number; skipped: number }>(
+      "/api/invoices/bulk-move",
+      {
+        method: "POST",
+        body: JSON.stringify({ invoices, zoneId }),
+      }
+    ),
   readyForPickup: (
     opts: {
       search?: string;
