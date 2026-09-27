@@ -65,7 +65,9 @@ export async function lookupInvoice(
     if (hit !== undefined) return hit.result;
   }
 
-  const rows = await query<Row>(SQL, [invoice]);
+  const digitsOnly = invoice.replace(/\D/g, "");
+  // SQL needs: exact-match, digits-only match, exact-match (again, for ORDER BY).
+  const rows = await query<Row>(SQL, [invoice, digitsOnly, invoice]);
   const row = rows[0];
   const toIsoDate = (v: string | Date | null): string | null => {
     if (v == null) return null;

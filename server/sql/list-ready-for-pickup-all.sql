@@ -3,7 +3,10 @@
 -- moves between zones as a single unit, so we collapse them here.
 -- Zones are joined in SQLite, filtering and pagination happen in JS
 -- so this must return the full result set.
--- Placeholders: ? = search term (LIKE), ? = search term (LIKE).
+-- The search term is matched against the raw invoice number AND against a
+-- digits-only version (H136260 -> 136260) so users can type either.
+-- Placeholders: ? = search term (LIKE, raw), ? = search term (LIKE, raw),
+--               ? = search term (LIKE, digits-only).
 
 SELECT
   co.InvoiceNumber                      AS invoice_number,
@@ -23,6 +26,7 @@ WHERE co.isActive = 1
   AND (
     ? = ''
     OR UPPER(co.InvoiceNumber) LIKE UPPER(CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci)
+    OR REGEXP_REPLACE(co.InvoiceNumber, '[^0-9]', '') LIKE ?
   )
 GROUP BY co.InvoiceNumber
 ORDER BY MAX(op.pickup_ready_at) DESC, co.InvoiceNumber ASC

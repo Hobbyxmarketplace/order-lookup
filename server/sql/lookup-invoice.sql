@@ -1,5 +1,9 @@
 -- Invoice status lookup.
--- Placeholder `?` is the invoice number (used once).
+-- Placeholders: ? = invoice as typed by the user (exact match, upper),
+--                ? = digits-only version of the same (fallback for "131055"
+--                    matching "H131055").
+--
+-- Only one row is ever returned. Exact matches beat digits-only via ORDER BY.
 -- Returns a single row with columns:
 --   grading_company, invoice_number, submission_number, status, status_date,
 --   owner_email, owner_login, owner_display_name, owner_phone, owner_registered,
@@ -94,7 +98,10 @@ LEFT JOIN psa_ordersDetail AS pod
 LEFT JOIN jih_users AS u
   ON u.user_email = co.`OwnerEmail(ME)`
 WHERE co.isActive = 1
-  AND UPPER(TRIM(co.InvoiceNumber)) = UPPER(CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci)
+  AND (
+    UPPER(TRIM(co.InvoiceNumber)) = UPPER(CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci)
+    OR REGEXP_REPLACE(co.InvoiceNumber, '[^0-9]', '') = ?
+  )
 GROUP BY
   co.InvoiceNumber,
   co.SubmissionNumber,
@@ -107,4 +114,10 @@ GROUP BY
   op.pickup_ready_at,
   ip.invoice_number,
   ip.pickup_date
+ORDER BY
+  -- Prefer an exact string hit over a digits-only fallback.
+  CASE
+    WHEN UPPER(TRIM(co.InvoiceNumber)) = UPPER(CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci)
+    THEN 0 ELSE 1
+  END
 LIMIT 1
