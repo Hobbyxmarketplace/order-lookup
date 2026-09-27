@@ -5,13 +5,20 @@ import compression from "compression";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { config, isProd } from "./config.js";
-import { ipGate } from "./lib/guard.js";
 import { closePool } from "./db/pool.js";
+import { bootstrapAdminIfEmpty } from "./db/users.js";
+import { bootstrapDefaultZoneIfEmpty } from "./db/zones.js";
 import authRoutes from "./routes/auth.js";
 import lookupRoutes from "./routes/lookup.js";
 import healthRoutes from "./routes/health.js";
+import zoneRoutes from "./routes/zones.js";
+import invoiceRoutes from "./routes/invoices.js";
+import auditRoutes from "./routes/audit.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+bootstrapAdminIfEmpty();
+bootstrapDefaultZoneIfEmpty();
 
 const app = express();
 
@@ -39,12 +46,12 @@ app.use(compression());
 app.use(express.json({ limit: "256kb" }));
 app.use(cookieParser());
 
-// health has no IP gate so uptime monitors work
 app.use("/api", healthRoutes);
-
-app.use("/api", ipGate);
 app.use("/api", authRoutes);
 app.use("/api", lookupRoutes);
+app.use("/api", zoneRoutes);
+app.use("/api", invoiceRoutes);
+app.use("/api", auditRoutes);
 
 // ---- static (React build) ----
 const clientDir = path.resolve(__dirname, "..", "dist");
@@ -70,13 +77,25 @@ app.get(/^(?!\/api\/).*/, (_req, res, next) => {
 
 app.use(
   (
-    err: Error,
+    err: Error & { type?: string; status?: number },
     _req: express.Request,
     res: express.Response,
     _next: express.NextFunction
   ) => {
+    if (err.type === "entity.parse.failed") {
+      return res
+        .status(400)
+        .json({ error: "That request wasn't in a format we could read." });
+    }
+    if (err.type === "entity.too.large") {
+      return res
+        .status(413)
+        .json({ error: "That request is too large. Please try a smaller batch." });
+    }
     console.error("[unhandled]", err.message);
-    res.status(500).json({ error: "Internal error" });
+    res
+      .status(500)
+      .json({ error: "Something went wrong on our end. Please try again in a moment." });
   }
 );
 

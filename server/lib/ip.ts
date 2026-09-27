@@ -30,14 +30,15 @@ function matchCidr(ip: string, cidr: string): boolean {
   return (ipN & mask) === (rangeN & mask);
 }
 
-const entries = config.ipAllowlist
+const officeEntries = config.officeIpAllowlist
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
 
-export function ipAllowed(req: Request): boolean {
-  if (entries.length === 0) return true;
+/** True when OFFICE_IP_ALLOWLIST is unset (no gate) or the request IP matches. */
+export function officeIpAllowed(req: Request): boolean {
+  if (officeEntries.length === 0) return true;
   const ip = clientIp(req);
   if (!ip) return false;
-  return entries.some((entry) => matchCidr(ip, entry));
+  return officeEntries.some((entry) => matchCidr(ip, entry));
 }

@@ -8,3 +8,4 @@ dist-server
 *.log
 .DS_Store
 tsconfig.tsbuildinfo
+data/

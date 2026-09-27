@@ -51,7 +51,12 @@ export const config = {
     jwtTtlHours: num("JWT_TTL_HOURS", 8),
   },
 
-  ipAllowlist: optional("IP_ALLOWLIST", ""),
+  // CIDRs allowed for role=staff. Empty disables the office-IP gate for staff.
+  // Admins bypass this restriction.
+  officeIpAllowlist: optional("OFFICE_IP_ALLOWLIST", ""),
+
+  // Path to the SQLite users database. Directory is created on startup.
+  usersDbPath: optional("USERS_DB_PATH", "data/app.db"),
 
   lookup: {
     // Cache TTL in seconds for invoice results. 0 disables cache.

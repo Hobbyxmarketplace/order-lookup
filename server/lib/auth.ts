@@ -1,18 +1,26 @@
 import jwt from "jsonwebtoken";
 import type { Request, Response } from "express";
 import { config, isProd } from "../config.js";
+import type { Role } from "../db/users.js";
 
 const COOKIE_NAME = "dblookup_token";
 
-export function signToken(sub: string): string {
-  return jwt.sign({ sub }, config.auth.jwtSecret, {
+export interface AuthClaims {
+  sub: string;
+  role: Role;
+  iat: number;
+  exp: number;
+}
+
+export function signToken(sub: string, role: Role): string {
+  return jwt.sign({ sub, role }, config.auth.jwtSecret, {
     expiresIn: `${config.auth.jwtTtlHours}h`,
   });
 }
 
-export function verifyToken(token: string): { sub: string } | null {
+export function verifyToken(token: string): AuthClaims | null {
   try {
-    return jwt.verify(token, config.auth.jwtSecret) as { sub: string };
+    return jwt.verify(token, config.auth.jwtSecret) as AuthClaims;
   } catch {
     return null;
   }
@@ -32,14 +40,22 @@ export function clearAuthCookie(res: Response): void {
   res.clearCookie(COOKIE_NAME, { path: "/" });
 }
 
-export function requireAuth(req: Request): { sub: string } | null {
+export function requireAuth(req: Request): AuthClaims | null {
   const token = req.cookies?.[COOKIE_NAME];
   if (!token) return null;
   return verifyToken(token);
 }
 
-export function verifyCredentials(username: string, password: string): boolean {
-  return (
-    username === config.auth.username && password === config.auth.password
-  );
+/**
+ * Sliding session: if the token has less than half its TTL remaining,
+ * mint a fresh one and reset the cookie. Keeps active users logged in;
+ * idle sessions still expire on schedule.
+ */
+export function maybeRefreshCookie(res: Response, claims: AuthClaims): void {
+  const nowSec = Math.floor(Date.now() / 1000);
+  const remaining = claims.exp - nowSec;
+  const ttlSec = config.auth.jwtTtlHours * 3600;
+  if (remaining > 0 && remaining < ttlSec / 2) {
+    setAuthCookie(res, signToken(claims.sub, claims.role));
+  }
 }

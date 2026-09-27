@@ -57,7 +57,7 @@ See `.env.example`. Key vars:
 | `AUTH_USERNAME` / `AUTH_PASSWORD` | Login credentials (not DB-backed) |
 | `JWT_SECRET` | 16+ char secret for signing cookies |
 | `JWT_TTL_HOURS` | Session length (default 8) |
-| `IP_ALLOWLIST` | Comma-separated CIDRs/IPs; empty = disabled |
+| `OFFICE_IP_ALLOWLIST` | Comma-separated CIDRs/IPs. Staff can only log in from these; admins bypass. Empty = disabled |
 | `LOOKUP_CACHE_TTL_SECONDS` | LRU TTL for invoice lookups (default 45) |
 | `LOOKUP_CACHE_MAX` | Max cached invoices (default 500) |
 

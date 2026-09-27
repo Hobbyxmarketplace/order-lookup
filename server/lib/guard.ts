@@ -1,22 +1,27 @@
 import type { Request, Response, NextFunction } from "express";
-import { ipAllowed } from "./ip.js";
-import { requireAuth } from "./auth.js";
+import { maybeRefreshCookie, requireAuth, type AuthClaims } from "./auth.js";
 
-export function ipGate(req: Request, res: Response, next: NextFunction) {
-  if (!ipAllowed(req)) {
-    res.status(403).json({ error: "IP not allowed" });
+export function authGate(req: Request, res: Response, next: NextFunction) {
+  const claims = requireAuth(req);
+  if (!claims) {
+    res
+      .status(401)
+      .json({ error: "Please sign in to continue." });
     return;
   }
+  maybeRefreshCookie(res, claims);
+  (req as Request & { user?: AuthClaims }).user = claims;
   next();
 }
 
-export function authGate(req: Request, res: Response, next: NextFunction) {
-  const user = requireAuth(req);
-  if (!user) {
-    res.status(401).json({ error: "Unauthorized" });
+export function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  const claims = (req as Request & { user?: AuthClaims }).user;
+  if (!claims || claims.role !== "admin") {
+    res
+      .status(403)
+      .json({ error: "Only admins can perform this action." });
     return;
   }
-  (req as Request & { user?: { sub: string } }).user = user;
   next();
 }
 
