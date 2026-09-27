@@ -4,9 +4,10 @@ import {
   signToken,
   setAuthCookie,
   clearAuthCookie,
-  verifyCredentials,
 } from "../lib/auth.js";
 import { authGate } from "../lib/guard.js";
+import { officeIpAllowed } from "../lib/ip.js";
+import { findByUsername, verifyPassword } from "../db/users.js";
 
 const router = Router();
 
@@ -15,7 +16,10 @@ const loginLimiter = rateLimit({
   limit: 10,
   standardHeaders: "draft-7",
   legacyHeaders: false,
-  message: { error: "Too many login attempts. Try again later." },
+  message: {
+    error:
+      "Too many login attempts. Please wait a few minutes before trying again.",
+  },
 });
 
 router.post("/login", loginLimiter, (req, res) => {
@@ -24,14 +28,24 @@ router.post("/login", loginLimiter, (req, res) => {
     password?: string;
   };
   if (!username || !password) {
-    return res.status(400).json({ error: "Missing credentials" });
+    return res
+      .status(400)
+      .json({ error: "Please enter your username and password." });
   }
-  if (!verifyCredentials(username, password)) {
-    return res.status(401).json({ error: "Invalid credentials" });
+  const user = findByUsername(username);
+  if (!user || !user.is_active || !verifyPassword(user, password)) {
+    return res
+      .status(401)
+      .json({ error: "Incorrect username or password." });
   }
-  const token = signToken(username);
+  if (user.role === "staff" && !officeIpAllowed(req)) {
+    return res
+      .status(403)
+      .json({ error: "Access restricted to office network" });
+  }
+  const token = signToken(user.username, user.role);
   setAuthCookie(res, token);
-  res.json({ ok: true, user: username });
+  res.json({ ok: true, user: user.username, role: user.role });
 });
 
 router.post("/logout", (_req, res) => {
@@ -40,7 +54,8 @@ router.post("/logout", (_req, res) => {
 });
 
 router.get("/me", authGate, (req, res) => {
-  res.json({ user: (req as any).user.sub });
+  const claims = (req as any).user;
+  res.json({ user: claims.sub, role: claims.role });
 });
 
 export default router;

@@ -7,6 +7,8 @@ export interface LookupResult {
 
   owner_email: string | null;
   owner_login: string | null;
+  owner_display_name: string | null;
+  owner_phone: string | null;
   owner_registered: string | null;
 
   date_arrived: string | null;
@@ -16,6 +18,23 @@ export interface LookupResult {
 
   service_level: string | null;
   is_reholder_or_crc: boolean;
+
+  // Only populated when status = 'Ready for Pickup'. Null for statuses where
+  // the card isn't physically in the store yet or has already left.
+  zone: { id: number; name: string } | null;
+
+  // Shipment label, pre-formatted server-side to the app's display format.
+  shipment: string | null;
+
+  // Turnaround / estimated completion (nullable — some orders have single date).
+  turnaround_days: number | null;
+  turnaround_days_high: number | null;
+  estimated_completion: string | null;
+  estimated_completion_upper: string | null;
+
+  // True when today's date is past the upper-bound estimated completion AND
+  // the order is not yet Ready for Pickup / Picked Up.
+  is_delayed: boolean;
 }
 
 export interface TableInfo {
