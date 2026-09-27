@@ -1,13 +1,13 @@
 import { ReactNode } from "react";
-import { Link } from "react-router-dom";
-import { api } from "../api";
+import { Link, NavLink } from "react-router-dom";
+import { api, type Me } from "../api";
 
 export default function Layout({
-  user,
+  me,
   onLogout,
   children,
 }: {
-  user: string;
+  me: Me;
   onLogout: () => void;
   children: ReactNode;
 }) {
@@ -24,8 +24,24 @@ export default function Layout({
             <span className="brand-dot" />
             Hobbyx <span className="sub">Order Lookup</span>
           </Link>
+          <nav className="site-nav">
+            <NavLink to="/" end>
+              Lookup
+            </NavLink>
+            <NavLink to="/bulk-move">Bulk move</NavLink>
+            {me.role === "admin" && (
+              <>
+                <NavLink to="/zones">Zones</NavLink>
+                <NavLink to="/audit">Audit</NavLink>
+              </>
+            )}
+          </nav>
           <div className="spacer" />
-          <span className="user">Signed in as {user}</span>
+          <span className="user">
+            <span className="user-name-prefix">Signed in as </span>
+            {me.user}{" "}
+            <span className={`role-badge role-${me.role}`}>{me.role}</span>
+          </span>
           <button onClick={logout}>Sign out</button>
         </div>
       </header>

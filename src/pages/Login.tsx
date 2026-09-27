@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { api } from "../api";
+import { api, type Me } from "../api";
 
-export default function Login({ onLogin }: { onLogin: (u: string) => void }) {
+export default function Login({ onLogin }: { onLogin: (m: Me) => void }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState<string | null>(null);
@@ -13,7 +13,7 @@ export default function Login({ onLogin }: { onLogin: (u: string) => void }) {
     setErr(null);
     try {
       const r = await api.login(username, password);
-      onLogin(r.user);
+      onLogin({ user: r.user, role: r.role });
     } catch (e: any) {
       setErr(e.message);
     } finally {
@@ -44,7 +44,16 @@ export default function Login({ onLogin }: { onLogin: (u: string) => void }) {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-        {err && <div className="notice error" style={{ marginTop: 14 }}>{err}</div>}
+        {err && (
+          <div
+            className="notice error"
+            role="alert"
+            aria-live="assertive"
+            style={{ marginTop: 14 }}
+          >
+            {err}
+          </div>
+        )}
         <button className="primary" disabled={busy || !username || !password}>
           {busy ? "Signing in..." : "Sign in"}
         </button>

@@ -38,15 +38,22 @@ const LABELS: Record<string, string> = {
 };
 
 const DESCRIPTIONS: Record<string, string> = {
-  orderArrived: "Your submission has arrived at PSA.",
-  research: "Your submission is being researched and identified.",
-  grading: "Your cards are being graded by PSA.",
-  assembly: "Your cards are being assembled.",
-  gradesReady: "Grades are ready. Finalising your order.",
-  completing: "Your order is being completed and prepared for pickup.",
-  pickupReady: "Your order is ready to be collected.",
-  pickedUp: "Order has been picked up. Thank you!",
+  orderArrived: "Submission has arrived at PSA.",
+  research: "Submission is being researched and identified.",
+  grading: "Cards are being graded by PSA.",
+  assembly: "Cards are being assembled.",
+  gradesReady: "Grades are ready. Order is being finalised.",
+  completing: "Order is being completed and prepared for pickup.",
+  pickupReady: "Order is in the warehouse, waiting for customer pickup.",
+  pickedUp: "Order has been picked up by the customer.",
 };
+
+function descriptionFor(key: string, r: LookupResult): string | undefined {
+  if (key === "pickupReady" && r.zone) {
+    return `Order is in ${r.zone.name}, waiting for customer pickup.`;
+  }
+  return DESCRIPTIONS[key];
+}
 
 function fmtDate(v: string | null): string | null {
   if (!v) return null;
@@ -94,7 +101,7 @@ export function buildSteps(r: LookupResult): {
     key: k,
     label: LABELS[k],
     date: dates[k] ?? null,
-    description: DESCRIPTIONS[k],
+    description: descriptionFor(k, r),
   }));
 
   let currentIdx = keys.indexOf(statusToStepKey(r.status));
