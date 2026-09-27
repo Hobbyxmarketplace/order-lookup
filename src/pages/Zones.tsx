@@ -119,17 +119,22 @@ export default function Zones() {
         active zones from the lookup and bulk-move pages.
       </p>
 
-      <form className="lookup-form" onSubmit={askCreate}>
-        <input
-          placeholder="New zone name (e.g. Zone B)"
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          maxLength={60}
-        />
-        <button className="primary" disabled={busy || !newName.trim()}>
-          Add zone
-        </button>
-      </form>
+      <div className="filters-bar">
+        <form className="lookup-form" onSubmit={askCreate}>
+          <div className="search-field">
+            <input
+              placeholder="New zone name (e.g. Zone B)"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              maxLength={60}
+              aria-label="New zone name"
+            />
+          </div>
+          <button className="primary" disabled={busy || !newName.trim()}>
+            Add zone
+          </button>
+        </form>
+      </div>
 
       {err && (
         <div className="notice error" role="alert" aria-live="assertive">

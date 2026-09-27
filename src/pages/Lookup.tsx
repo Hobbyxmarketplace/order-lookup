@@ -94,17 +94,34 @@ export default function Lookup() {
         </p>
       )}
 
-      <form className="lookup-form" onSubmit={submit}>
-        <input
-          autoFocus
-          placeholder="Invoice number (e.g. H136260)"
-          value={invoice}
-          onChange={(e) => setInvoice(e.target.value)}
-        />
-        <button className="primary" disabled={busy || !invoice.trim()}>
-          {busy ? "Checking..." : "Submit"}
-        </button>
-      </form>
+      <div className="filters-bar">
+        <form className="lookup-form" onSubmit={submit}>
+          <div className="search-field">
+            <svg
+              className="search-icon"
+              viewBox="0 0 24 24"
+              width="16"
+              height="16"
+              aria-hidden
+            >
+              <path
+                d="M10.5 4a6.5 6.5 0 1 1-4.192 11.474l-3.16 3.161a1 1 0 1 1-1.414-1.414l3.16-3.16A6.5 6.5 0 0 1 10.5 4Zm0 2a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z"
+                fill="currentColor"
+              />
+            </svg>
+            <input
+              autoFocus
+              placeholder="Invoice number (e.g. H136260)"
+              value={invoice}
+              onChange={(e) => setInvoice(e.target.value)}
+              aria-label="Invoice number"
+            />
+          </div>
+          <button className="primary" disabled={busy || !invoice.trim()}>
+            {busy ? "Checking..." : "Submit"}
+          </button>
+        </form>
+      </div>
 
       {busy && (
         <section
