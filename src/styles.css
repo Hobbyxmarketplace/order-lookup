@@ -354,6 +354,8 @@ input:focus, select:focus, textarea:focus {
   gap: var(--s-lg);
   align-items: start;
 }
+/* Non-PSA card: no stepper column, keep the same max-width feel. */
+.order-card.single-col { max-width: 720px; }
 .order-main { min-width: 0; }
 
 .progress-title {

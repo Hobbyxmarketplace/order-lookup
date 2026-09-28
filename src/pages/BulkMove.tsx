@@ -38,6 +38,8 @@ export default function BulkMove() {
   const [searchInput, setSearchInput] = useState("");
   const debouncedSearch = useDebounced(searchInput.trim(), SEARCH_DEBOUNCE_MS);
   const [zoneFilter, setZoneFilter] = useState<Set<number>>(new Set());
+  const [companyFilter, setCompanyFilter] = useState<Set<string>>(new Set());
+  const COMPANIES = ["PSA", "BGS", "CGC", "GEA"];
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   // Zone that each selected invoice was in AT THE TIME it was ticked.
@@ -84,6 +86,7 @@ export default function BulkMove() {
           limit: PAGE_SIZE,
           offset,
           zoneIds: Array.from(zoneFilter),
+          companies: Array.from(companyFilter),
         },
         ac.signal
       )
@@ -101,11 +104,11 @@ export default function BulkMove() {
       });
 
     return () => ac.abort();
-  }, [debouncedSearch, zoneFilter, offset]);
+  }, [debouncedSearch, zoneFilter, companyFilter, offset]);
 
-  // Reset to page 1 when the search string or zone filter changes.
+  // Reset to page 1 when the search string, zone or company filter changes.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => setOffset(0), [debouncedSearch, zoneFilter]);
+  useEffect(() => setOffset(0), [debouncedSearch, zoneFilter, companyFilter]);
 
   async function refresh() {
     const ac = new AbortController();
@@ -117,6 +120,7 @@ export default function BulkMove() {
           limit: PAGE_SIZE,
           offset,
           zoneIds: Array.from(zoneFilter),
+          companies: Array.from(companyFilter),
         },
         ac.signal
       );
@@ -136,6 +140,20 @@ export default function BulkMove() {
       else s.add(id);
       return s;
     });
+  }
+
+  function toggleCompanyFilter(name: string) {
+    setCompanyFilter((prev) => {
+      const s = new Set(prev);
+      if (s.has(name)) s.delete(name);
+      else s.add(name);
+      return s;
+    });
+  }
+
+  function fmtItems(n: number | null): string {
+    if (n == null) return "—";
+    return n === 1 ? "1 item" : `${n} items`;
   }
 
   function toggle(item: ReadyPickupItem) {
@@ -288,6 +306,35 @@ export default function BulkMove() {
             </div>
           </div>
         )}
+
+        <div className="zone-filter">
+          <span className="zone-filter-label">Company</span>
+          <div className="zone-filter-chips">
+            {COMPANIES.map((name) => {
+              const active = companyFilter.has(name);
+              return (
+                <button
+                  key={name}
+                  type="button"
+                  className={`zone-filter-chip${active ? " active" : ""}`}
+                  onClick={() => toggleCompanyFilter(name)}
+                  aria-pressed={active}
+                >
+                  {name}
+                </button>
+              );
+            })}
+            {companyFilter.size > 0 && (
+              <button
+                type="button"
+                className="zone-filter-clear"
+                onClick={() => setCompanyFilter(new Set())}
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
       {err && (
@@ -314,26 +361,29 @@ export default function BulkMove() {
                 />
               </th>
               <th>Invoice</th>
-              <th>Submission</th>
+              <th>Company</th>
+              <th>Items</th>
               <th>Owner</th>
-              <th>Ready</th>
+              <th>Received</th>
               <th>Current zone</th>
             </tr>
           </thead>
           <tbody>
             {loading && items.length === 0 && (
               <tr>
-                <td colSpan={6} className="empty">
+                <td colSpan={7} className="empty">
                   <span className="spinner inline" /> Loading…
                 </td>
               </tr>
             )}
             {!loading && items.length === 0 && (
               <tr>
-                <td colSpan={6} className="empty">
-                  {debouncedSearch || zoneFilter.size > 0
+                <td colSpan={7} className="empty">
+                  {debouncedSearch ||
+                  zoneFilter.size > 0 ||
+                  companyFilter.size > 0
                     ? "No invoices match these filters."
-                    : "No invoices are currently ready for pickup."}
+                    : "No invoices found."}
                 </td>
               </tr>
             )}
@@ -347,9 +397,12 @@ export default function BulkMove() {
                   />
                 </td>
                 <td className="mono">{it.invoice}</td>
-                <td className="mono">{it.submission_number ?? "-"}</td>
-                <td>{it.owner_email ?? "-"}</td>
-                <td>{fmtDate(it.pickup_ready_at)}</td>
+                <td>
+                  <span className="company-badge">{it.company}</span>
+                </td>
+                <td>{fmtItems(it.items)}</td>
+                <td>{it.owner_name || it.owner_email || "-"}</td>
+                <td>{fmtDate(it.received_at ?? it.pickup_ready_at)}</td>
                 <td>
                   <span className="zone-chip">{it.zone.name}</span>
                 </td>

@@ -9,6 +9,7 @@ export interface LookupResult {
   owner_login: string | null;
   owner_display_name: string | null;
   owner_phone: string | null;
+  owner_international_phone: string | null;
   owner_registered: string | null;
 
   date_arrived: string | null;
@@ -35,6 +36,16 @@ export interface LookupResult {
   // True when today's date is past the upper-bound estimated completion AND
   // the order is not yet Ready for Pickup / Picked Up.
   is_delayed: boolean;
+
+  // Number of physical items covered by this invoice. For PSA this is the
+  // psa_certOwners row count; for non-PSA this is the sum of Quantity fields
+  // parsed out of service_level. Null when unknown.
+  items: number | null;
+
+  // Non-PSA orders come from the intake table and carry no live grading
+  // status. When true, the frontend should hide the stepper/delay/completion
+  // block and show a lighter card.
+  is_non_psa: boolean;
 }
 
 export interface TableInfo {

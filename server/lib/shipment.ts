@@ -164,3 +164,45 @@ export function formatShipmentLabel(raw: string | null | undefined): string {
   // Already-formatted "June 26 - Xxx" style (or anything else) — just abbrev.
   return abbrevMonthsInText(trimmed);
 }
+
+/**
+ * Build a shipment label from the intake-form group code + submission month/year.
+ * Used for non-PSA orders where we have no `Shipment(ME)` string.
+ *
+ * Examples:
+ *   ('#1',       2026, 8)  -> 'Aug 26 - 1st Shipment'
+ *   ('#2',       2026, 8)  -> 'Aug 26 - 2nd Shipment'
+ *   ('#1.5',     2026, 8)  -> 'Aug 26 - Special Shipment'
+ *   ('#Grade10', 2026, 8)  -> 'Aug 26 - Grade10'
+ *   ('#Comic Con', 2026, 8) -> 'Aug 26 - Comic Con'
+ *
+ * Returns an empty string when we can't derive anything meaningful.
+ */
+export function buildShipmentFromGroup(
+  groupCode: string | null | undefined,
+  year: number | null | undefined,
+  month: number | null | undefined
+): string {
+  if (!groupCode || year == null || month == null) return "";
+  const short = shortMonth(month);
+  if (!short) return "";
+  const monthYear = `${short} ${twoDigitYear(year)}`;
+
+  // Strip leading '#' if present.
+  const code = groupCode.trim().replace(/^#/, "").trim();
+  if (!code) return "";
+
+  // Numeric-only: 1, 2, 3 -> "1st Shipment", etc.
+  const numeric = /^(\d+)$/.exec(code);
+  if (numeric) {
+    return `${monthYear} - ${ordinal(parseInt(numeric[1], 10))} Shipment`;
+  }
+
+  // Decimal (e.g. 1.5) -> Special Shipment.
+  if (/^\d+\.\d+$/.test(code)) {
+    return `${monthYear} - Special Shipment`;
+  }
+
+  // Named (Grade10, Comic Con, etc.) -> keep name as-is.
+  return `${monthYear} - ${code}`;
+}

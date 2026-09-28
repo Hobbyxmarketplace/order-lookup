@@ -9,6 +9,7 @@ export interface LookupResult {
   owner_login: string | null;
   owner_display_name: string | null;
   owner_phone: string | null;
+  owner_international_phone: string | null;
   owner_registered: string | null;
 
   date_arrived: string | null;
@@ -29,6 +30,12 @@ export interface LookupResult {
   estimated_completion_upper: string | null;
 
   is_delayed: boolean;
+
+  /** Physical item count. PSA: cert rows. Non-PSA: sum of Quantity. */
+  items: number | null;
+
+  /** True for BGS/CGC/GEA (no live status, no stepper). */
+  is_non_psa: boolean;
 }
 
 export interface Zone {
@@ -41,10 +48,14 @@ export interface Zone {
 
 export interface ReadyPickupItem {
   invoice: string;
+  company: string;
   submission_number: string | null;
   owner_email: string | null;
+  owner_name: string | null;
   pickup_ready_at: string | null;
+  received_at: string | null;
   zone: { id: number; name: string };
+  items: number | null;
 }
 
 export interface ReadyPickupPage {
@@ -168,6 +179,7 @@ export const api = {
       limit?: number;
       offset?: number;
       zoneIds?: number[];
+      companies?: string[];
     } = {},
     signal?: AbortSignal
   ) => {
@@ -177,6 +189,8 @@ export const api = {
     if (opts.offset) p.set("offset", String(opts.offset));
     if (opts.zoneIds && opts.zoneIds.length > 0)
       p.set("zoneIds", opts.zoneIds.join(","));
+    if (opts.companies && opts.companies.length > 0)
+      p.set("companies", opts.companies.join(","));
     const q = p.toString();
     return req<ReadyPickupPage>(
       "/api/invoices/ready-for-pickup" + (q ? `?${q}` : ""),

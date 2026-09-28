@@ -4,7 +4,8 @@ import { loadSql } from "../db/read-sql.js";
 import { config } from "../config.js";
 import type { LookupResult } from "../types.js";
 import { getZoneForInvoice } from "../db/zones.js";
-import { formatShipmentLabel } from "../lib/shipment.js";
+import { formatShipmentLabel, buildShipmentFromGroup } from "../lib/shipment.js";
+import { parseServiceLevel } from "../lib/serviceLevel.js";
 
 // LRUCache values must be non-null; wrap in an object to allow "found: null".
 type CacheEntry = { result: LookupResult | null };
@@ -14,6 +15,25 @@ const cache = new LRUCache<string, CacheEntry>({
 });
 
 const SQL = loadSql("lookup-invoice");
+const NONPSA_SQL = loadSql("lookup-nonpsa");
+const COUNT_ITEMS_SQL = loadSql("count-items");
+
+interface NonPsaRow {
+  invoice_number: string;
+  submission_date: string | Date | null;
+  submitted_at: string | Date | null;
+  submission_year: number | null;
+  submission_month: number | null;
+  group_code: string | null;
+  handler: string | null;
+  service_level_raw: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  owner_email: string | null;
+  owner_phone: string | null;
+  owner_international_phone: string | null;
+  preferred_language: string | null;
+}
 
 /**
  * True when `now`'s calendar day is strictly after `iso`'s calendar day, using
@@ -58,7 +78,7 @@ export async function lookupInvoice(
   invoiceRaw: string
 ): Promise<LookupResult | null> {
   const invoice = normalize(invoiceRaw);
-  if (!invoice) return null;
+  if (!invoice || invoice === "T") return null;
 
   if (config.lookup.cacheTtlSeconds > 0) {
     const hit = cache.get(invoice);
@@ -115,6 +135,9 @@ export async function lookupInvoice(
         estimated_completion: toIsoDate(row.estimated_completion),
         estimated_completion_upper: toIsoDate(row.estimated_completion_upper),
         is_delayed: isDelayed,
+        owner_international_phone: null,
+        items: null,
+        is_non_psa: false,
       }
     : null;
 
@@ -123,9 +146,80 @@ export async function lookupInvoice(
     result = { ...result, zone: { id: z.id, name: z.name } };
   }
 
+  // Attach PSA item count from psa_certOwners.
+  if (result) {
+    try {
+      const [c] = await query<{ items: number }>(COUNT_ITEMS_SQL, [invoice]);
+      result = { ...result, items: c?.items ?? null };
+    } catch (e: any) {
+      console.error("[lookup] item count failed:", e.message);
+    }
+  }
+
+  // No PSA hit? Try the intake table (BGS/CGC/GEA/unknown).
+  if (!result) {
+    result = await lookupNonPsa(invoice);
+  }
+
   if (config.lookup.cacheTtlSeconds > 0) {
     cache.set(invoice, { result });
   }
+  return result;
+}
+
+async function lookupNonPsa(invoice: string): Promise<LookupResult | null> {
+  const rows = await query<NonPsaRow>(NONPSA_SQL, [invoice]);
+  const row = rows[0];
+  if (!row) return null;
+
+  const parsed = parseServiceLevel(row.service_level_raw);
+  const displayName = [row.first_name, row.last_name]
+    .filter((s) => s && s.trim())
+    .join(" ") || null;
+  const contactPhone = row.owner_phone || row.owner_international_phone;
+  const shipment = buildShipmentFromGroup(
+    row.group_code,
+    row.submission_year,
+    row.submission_month
+  ) || null;
+
+  // Preserve exact stored invoice number (case), fall back to what user typed.
+  const inv = row.invoice_number || invoice;
+
+  let result: LookupResult = {
+    invoice: inv,
+    grading_company: parsed.company,
+    status: "Non-PSA",
+    status_date: null,
+    submission_number: null,
+    owner_email: row.owner_email,
+    owner_login: null,
+    owner_display_name: displayName,
+    owner_phone: contactPhone,
+    owner_international_phone: row.owner_international_phone,
+    owner_registered: null,
+    date_arrived: null,
+    date_completed: null,
+    pickup_ready_at: null,
+    pickup_date: null,
+    service_level: parsed.service,
+    is_reholder_or_crc: false,
+    zone: null,
+    shipment,
+    turnaround_days: null,
+    turnaround_days_high: null,
+    estimated_completion: null,
+    estimated_completion_upper: null,
+    is_delayed: false,
+    items: parsed.quantity,
+    is_non_psa: true,
+  };
+
+  // Every non-PSA invoice defaults to the default zone; explicit assignments
+  // in invoice_zones override it (same sparse model as PSA).
+  const z = getZoneForInvoice(inv);
+  result = { ...result, zone: { id: z.id, name: z.name } };
+
   return result;
 }
 

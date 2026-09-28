@@ -357,18 +357,43 @@ export function getZonesForInvoices(
 ): Map<string, Zone> {
   const out = new Map<string, Zone>();
   if (invoices.length === 0) return out;
-  const placeholders = invoices.map(() => "?").join(",");
+
+  // For small filter lists (<= 500), use IN (?, ?, ...). For larger, fall
+  // back to fetching every assigned invoice and filtering in JS — SQLite's
+  // default variable-limit is 999 and the assignments table is usually
+  // much smaller than the invoice universe anyway.
+  const CHUNK = 500;
+  if (invoices.length <= CHUNK) {
+    const placeholders = invoices.map(() => "?").join(",");
+    const rows = db
+      .prepare(
+        `SELECT iz.invoice_number, z.*
+         FROM invoice_zones iz
+         JOIN zones z ON z.id = iz.zone_id
+         WHERE iz.invoice_number IN (${placeholders}) COLLATE NOCASE`
+      )
+      .all(...invoices) as (Zone & { invoice_number: string })[];
+    for (const r of rows) {
+      const { invoice_number, ...zone } = r as any;
+      out.set(String(invoice_number).toUpperCase(), zone as Zone);
+    }
+    return out;
+  }
+
+  // Full-table scan path.
+  const requested = new Set(invoices.map((s) => s.toUpperCase()));
   const rows = db
     .prepare(
       `SELECT iz.invoice_number, z.*
        FROM invoice_zones iz
-       JOIN zones z ON z.id = iz.zone_id
-       WHERE iz.invoice_number IN (${placeholders}) COLLATE NOCASE`
+       JOIN zones z ON z.id = iz.zone_id`
     )
-    .all(...invoices) as (Zone & { invoice_number: string })[];
+    .all() as (Zone & { invoice_number: string })[];
   for (const r of rows) {
+    const key = String(r.invoice_number).toUpperCase();
+    if (!requested.has(key)) continue;
     const { invoice_number, ...zone } = r as any;
-    out.set(String(invoice_number).toUpperCase(), zone as Zone);
+    out.set(key, zone as Zone);
   }
   return out;
 }

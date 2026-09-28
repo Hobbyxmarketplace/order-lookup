@@ -32,6 +32,11 @@ function fmtTurnaround(low: number | null, high: number | null): string {
   return "";
 }
 
+function fmtItems(n: number | null): string {
+  if (n == null) return "— items";
+  return n === 1 ? "1 item" : `${n} items`;
+}
+
 /** One "field" inside an info block: an uppercase label + a value. */
 function Field({
   label,
@@ -200,7 +205,7 @@ export default function Lookup() {
 
       {result && !busy && (
         <section
-          className="result order-card two-col"
+          className={`result order-card${result.is_non_psa ? " single-col" : " two-col"}`}
           data-status={statusSlug(result.status)}
         >
           <div className="order-main">
@@ -228,6 +233,7 @@ export default function Lookup() {
               {result.service_level && (
                 <Field label="Service">{result.service_level}</Field>
               )}
+              <Field label="Items">{fmtItems(result.items)}</Field>
               {result.submission_number && (
                 <Field label="Submission">
                   <span className="mono">{result.submission_number}</span>
@@ -288,10 +294,12 @@ export default function Lookup() {
             )}
           </div>
 
-          <aside className="order-progress">
-            <div className="progress-title">Progress</div>
-            <Stepper result={result} />
-          </aside>
+          {!result.is_non_psa && (
+            <aside className="order-progress">
+              <div className="progress-title">Progress</div>
+              <Stepper result={result} />
+            </aside>
+          )}
         </section>
       )}
 
