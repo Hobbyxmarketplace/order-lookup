@@ -12,6 +12,7 @@ export interface UserRow {
   password_hash: string;
   role: Role;
   is_active: 0 | 1;
+  can_move: 0 | 1;
   created_at: string;
 }
 
@@ -33,6 +34,16 @@ db.exec(`
   );
 `);
 
+// Add can_move column on existing installs (defaults to 1 = allowed, matching
+// legacy behaviour where every staff account could move invoices).
+const hasCanMove = (db
+  .prepare("PRAGMA table_info(users)")
+  .all() as { name: string }[])
+  .some((c) => c.name === "can_move");
+if (!hasCanMove) {
+  db.exec("ALTER TABLE users ADD COLUMN can_move INTEGER NOT NULL DEFAULT 1");
+}
+
 export function findByUsername(username: string): UserRow | undefined {
   return db
     .prepare<[string], UserRow>(
@@ -43,11 +54,11 @@ export function findByUsername(username: string): UserRow | undefined {
 
 export function listUsers(): Pick<
   UserRow,
-  "id" | "username" | "role" | "is_active" | "created_at"
+  "id" | "username" | "role" | "is_active" | "can_move" | "created_at"
 >[] {
   return db
     .prepare(
-      "SELECT id, username, role, is_active, created_at FROM users ORDER BY id"
+      "SELECT id, username, role, is_active, can_move, created_at FROM users ORDER BY id"
     )
     .all() as any;
 }
@@ -79,6 +90,15 @@ export function setActive(username: string, active: boolean): void {
       "UPDATE users SET is_active = ? WHERE username = ? COLLATE NOCASE"
     )
     .run(active ? 1 : 0, username);
+  if (res.changes === 0) throw new Error(`User not found: ${username}`);
+}
+
+export function setCanMove(username: string, allowed: boolean): void {
+  const res = db
+    .prepare(
+      "UPDATE users SET can_move = ? WHERE username = ? COLLATE NOCASE"
+    )
+    .run(allowed ? 1 : 0, username);
   if (res.changes === 0) throw new Error(`User not found: ${username}`);
 }
 

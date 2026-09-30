@@ -8,12 +8,24 @@ const COOKIE_NAME = "dblookup_token";
 export interface AuthClaims {
   sub: string;
   role: Role;
+  /**
+   * Per-user capability: can this account assign invoices to zones?
+   * Admins always have this ability regardless of the flag. Older tokens
+   * minted before this field was introduced may not carry it — treat
+   * missing values as `true` (legacy default) so existing sessions keep
+   * working until the next JWT rotation.
+   */
+  canMove?: boolean;
   iat: number;
   exp: number;
 }
 
-export function signToken(sub: string, role: Role): string {
-  return jwt.sign({ sub, role }, config.auth.jwtSecret, {
+export function signToken(
+  sub: string,
+  role: Role,
+  canMove: boolean
+): string {
+  return jwt.sign({ sub, role, canMove }, config.auth.jwtSecret, {
     expiresIn: `${config.auth.jwtTtlHours}h`,
   });
 }
@@ -56,6 +68,9 @@ export function maybeRefreshCookie(res: Response, claims: AuthClaims): void {
   const remaining = claims.exp - nowSec;
   const ttlSec = config.auth.jwtTtlHours * 3600;
   if (remaining > 0 && remaining < ttlSec / 2) {
-    setAuthCookie(res, signToken(claims.sub, claims.role));
+    setAuthCookie(
+      res,
+      signToken(claims.sub, claims.role, claims.canMove ?? true)
+    );
   }
 }

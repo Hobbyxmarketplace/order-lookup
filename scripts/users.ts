@@ -7,12 +7,14 @@
  *   npm run users passwd -- --username alice --password 'new-secret'
  *   npm run users disable -- --username bob
  *   npm run users enable  -- --username bob
+ *   npm run users can-move -- --username bob --allow true|false
  */
 import "dotenv/config";
 import {
   createUser,
   listUsers,
   setActive,
+  setCanMove,
   setPassword,
   type Role,
 } from "../server/db/users.js";
@@ -56,6 +58,7 @@ switch (cmd) {
       w("USERNAME", 24),
       w("ROLE", 8),
       w("ACTIVE", 8),
+      w("CAN_MOVE", 10),
       "CREATED"
     );
     for (const r of rows) {
@@ -64,6 +67,7 @@ switch (cmd) {
         w(r.username, 24),
         w(r.role, 8),
         w(r.is_active ? "yes" : "no", 8),
+        w(r.can_move ? "yes" : "no", 10),
         r.created_at
       );
     }
@@ -102,9 +106,22 @@ switch (cmd) {
     console.log(`enabled '${username}'`);
     break;
   }
+  case "can-move": {
+    const { username, allow } = args;
+    if (!username || allow === undefined) {
+      fail("can-move requires --username and --allow true|false");
+    }
+    const v = String(allow).toLowerCase();
+    if (v !== "true" && v !== "false") {
+      fail("--allow must be 'true' or 'false'");
+    }
+    setCanMove(username, v === "true");
+    console.log(`can_move set to ${v} for '${username}'`);
+    break;
+  }
   default:
     console.log(
-      "usage: npm run users <list|add|passwd|disable|enable> [-- --flags]"
+      "usage: npm run users <list|add|passwd|disable|enable|can-move> [-- --flags]"
     );
     process.exit(cmd ? 1 : 0);
 }

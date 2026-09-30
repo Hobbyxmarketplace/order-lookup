@@ -130,15 +130,25 @@ export type Role = "admin" | "staff";
 export interface Me {
   user: string;
   role: Role;
+  /**
+   * Whether this account is allowed to assign invoices to zones.
+   * Admins always get `true`; staff accounts carry a per-user flag.
+   * Optional on the type so older cached JSON keeps parsing —
+   * missing = treated as `true` (legacy behaviour) in the UI.
+   */
+  can_move?: boolean;
 }
 
 export const api = {
   me: () => req<Me>("/api/me"),
   login: (username: string, password: string) =>
-    req<{ ok: true; user: string; role: Role }>("/api/login", {
-      method: "POST",
-      body: JSON.stringify({ username, password }),
-    }),
+    req<{ ok: true; user: string; role: Role; can_move: boolean }>(
+      "/api/login",
+      {
+        method: "POST",
+        body: JSON.stringify({ username, password }),
+      }
+    ),
   logout: () => req<{ ok: true }>("/api/logout", { method: "POST" }),
   lookup: (invoice: string) =>
     req<LookupResult>(`/api/lookup?invoice=${encodeURIComponent(invoice)}`),

@@ -43,9 +43,15 @@ router.post("/login", loginLimiter, (req, res) => {
       .status(403)
       .json({ error: "Access restricted to office network" });
   }
-  const token = signToken(user.username, user.role);
+  const canMove = user.role === "admin" || user.can_move === 1;
+  const token = signToken(user.username, user.role, canMove);
   setAuthCookie(res, token);
-  res.json({ ok: true, user: user.username, role: user.role });
+  res.json({
+    ok: true,
+    user: user.username,
+    role: user.role,
+    can_move: canMove,
+  });
 });
 
 router.post("/logout", (_req, res) => {
@@ -55,7 +61,9 @@ router.post("/logout", (_req, res) => {
 
 router.get("/me", authGate, (req, res) => {
   const claims = (req as any).user;
-  res.json({ user: claims.sub, role: claims.role });
+  const canMove =
+    claims.role === "admin" || (claims.canMove ?? true);
+  res.json({ user: claims.sub, role: claims.role, can_move: canMove });
 });
 
 export default router;

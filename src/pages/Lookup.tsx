@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { api, LookupResult } from "../api";
+import { api, LookupResult, type Me } from "../api";
 import Stepper from "../components/Stepper";
 import MoveZoneDialog from "../components/MoveZoneDialog";
 
@@ -55,7 +55,8 @@ function Field({
   );
 }
 
-export default function Lookup() {
+export default function Lookup({ me }: { me: Me }) {
+  const canMove = me.role === "admin" || (me.can_move ?? true);
   const [invoice, setInvoice] = useState("");
   const [result, setResult] = useState<LookupResult | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -293,7 +294,7 @@ export default function Lookup() {
               </div>
             )}
 
-            {result.zone && (
+            {result.zone && canMove && (
               <div className="order-actions">
                 <button
                   type="button"

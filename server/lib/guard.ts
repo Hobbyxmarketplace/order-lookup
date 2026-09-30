@@ -25,6 +25,28 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
+/**
+ * Allows admins unconditionally, and staff only when their `canMove` claim
+ * is true. Missing `canMove` on a legacy token defaults to true so we never
+ * accidentally lock out an active session before the next JWT rotation.
+ */
+export function requireCanMove(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  const claims = (req as Request & { user?: AuthClaims }).user;
+  if (!claims) {
+    res.status(401).json({ error: "Please sign in to continue." });
+    return;
+  }
+  if (claims.role === "admin") return next();
+  if (claims.canMove ?? true) return next();
+  res.status(403).json({
+    error: "Your account is not permitted to assign locations.",
+  });
+}
+
 const IDENT = /^[A-Za-z0-9_]+$/;
 
 export function safeIdent(name: string): string {

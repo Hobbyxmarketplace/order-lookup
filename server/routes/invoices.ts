@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { authGate } from "../lib/guard.js";
+import { authGate, requireCanMove } from "../lib/guard.js";
 import { query } from "../db/pool.js";
 import { loadSql } from "../db/read-sql.js";
 import {
@@ -34,9 +34,10 @@ function normalizeInvoice(s: unknown): string {
 }
 
 /**
- * Move a single invoice to a zone. Available to any authenticated user.
+ * Move a single invoice to a zone. Requires the caller to have the
+ * `can_move` capability (admins always do).
  */
-router.post("/invoices/:invoice/move", authGate, (req, res) => {
+router.post("/invoices/:invoice/move", authGate, requireCanMove, (req, res) => {
   const invoice = normalizeInvoice(req.params.invoice);
   const { zoneId } = (req.body || {}) as { zoneId?: number };
   if (!invoice)
@@ -65,7 +66,7 @@ router.post("/invoices/:invoice/move", authGate, (req, res) => {
  * Move many invoices at once to a single target zone.
  * Body: { invoices: string[], zoneId: number }
  */
-router.post("/invoices/bulk-move", authGate, (req, res) => {
+router.post("/invoices/bulk-move", authGate, requireCanMove, (req, res) => {
   const { invoices, zoneId } = (req.body || {}) as {
     invoices?: unknown;
     zoneId?: number;
@@ -127,7 +128,10 @@ router.post("/invoices/bulk-move", authGate, (req, res) => {
  *   limit       default 50, max 200
  *   offset      default 0
  */
-router.get("/invoices/ready-for-pickup", authGate, async (req, res) => {
+// The bulk-move list itself is only useful to accounts that can actually move
+// invoices — gate it too, so a viewer-only staff member never lands on an
+// empty-looking page or wastes DB round trips.
+router.get("/invoices/ready-for-pickup", authGate, requireCanMove, async (req, res) => {
   const search = String(req.query.search || "").trim();
   const like = search ? `%${search}%` : "";
   const limitRaw = Number(req.query.limit ?? 50);

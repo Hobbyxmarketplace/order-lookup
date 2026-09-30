@@ -20,7 +20,12 @@ describe("POST /api/login", () => {
       .post("/api/login")
       .send({ username: "seed_admin", password: "seed_password" });
     expect(r.status).toBe(200);
-    expect(r.body).toEqual({ ok: true, user: "seed_admin", role: "admin" });
+    expect(r.body).toEqual({
+      ok: true,
+      user: "seed_admin",
+      role: "admin",
+      can_move: true,
+    });
     expect(r.headers["set-cookie"]).toBeTruthy();
   });
 
@@ -80,7 +85,11 @@ describe("GET /api/me", () => {
     const cookie = extractCookie(login);
     const r = await request(app).get("/api/me").set("Cookie", cookie);
     expect(r.status).toBe(200);
-    expect(r.body).toEqual({ user: "seed_admin", role: "admin" });
+    expect(r.body).toEqual({
+      user: "seed_admin",
+      role: "admin",
+      can_move: true,
+    });
   });
 
   it("rejects garbage cookie", async () => {
@@ -88,6 +97,58 @@ describe("GET /api/me", () => {
       .get("/api/me")
       .set("Cookie", "dblookup_token=not.a.jwt");
     expect(r.status).toBe(401);
+  });
+});
+
+// Per-user can_move capability. staff1 starts with the default (allowed).
+// When we revoke it via setCanMove(), the move endpoints must 403 and
+// /api/me should surface can_move=false.
+describe("can_move capability", () => {
+  it("staff with can_move revoked cannot move invoices", async () => {
+    const { setCanMove } = await import("../server/db/users.js");
+    setCanMove("staff1", false);
+
+    const login = await request(app)
+      .post("/api/login")
+      .send({ username: "staff1", password: "staffpass" });
+    expect(login.body.can_move).toBe(false);
+    const cookie = extractCookie(login);
+
+    const me = await request(app).get("/api/me").set("Cookie", cookie);
+    expect(me.body.can_move).toBe(false);
+
+    const single = await request(app)
+      .post("/api/invoices/H999999/move")
+      .set("Cookie", cookie)
+      .send({ zoneId: 1 });
+    expect(single.status).toBe(403);
+
+    const bulk = await request(app)
+      .post("/api/invoices/bulk-move")
+      .set("Cookie", cookie)
+      .send({ invoices: ["H999999"], zoneId: 1 });
+    expect(bulk.status).toBe(403);
+
+    const list = await request(app)
+      .get("/api/invoices/ready-for-pickup")
+      .set("Cookie", cookie);
+    expect(list.status).toBe(403);
+
+    // Restore for any downstream tests in this file.
+    setCanMove("staff1", true);
+  });
+
+  it("admin ignores can_move flag (always allowed)", async () => {
+    const { setCanMove } = await import("../server/db/users.js");
+    // Even if we tried to strip can_move from an admin, the guard should
+    // let admins through unconditionally. We do NOT expose a way to set
+    // can_move on admins in the CLI, but the guard must still be robust.
+    setCanMove("seed_admin", false);
+    const login = await request(app)
+      .post("/api/login")
+      .send({ username: "seed_admin", password: "seed_password" });
+    expect(login.body.can_move).toBe(true);
+    setCanMove("seed_admin", true);
   });
 });
 

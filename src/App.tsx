@@ -39,10 +39,14 @@ export default function App() {
     </Layout>
   );
 
+  const canMove = me.role === "admin" || (me.can_move ?? true);
+
   return (
     <Routes>
-      <Route path="/" element={wrap(<Lookup />)} />
-      <Route path="/bulk-move" element={wrap(<BulkMove />)} />
+      <Route path="/" element={wrap(<Lookup me={me} />)} />
+      {canMove && (
+        <Route path="/bulk-move" element={wrap(<BulkMove />)} />
+      )}
       {me.role === "admin" && (
         <>
           <Route path="/zones" element={wrap(<Zones />)} />

@@ -28,7 +28,13 @@ export default function Layout({
             <NavLink to="/" end>
               Lookup
             </NavLink>
-            <NavLink to="/bulk-move">Bulk move</NavLink>
+            {/* Bulk move is only useful for accounts that can actually move
+             * invoices. Admins always see it; staff see it only when their
+             * account has can_move enabled. Legacy Me payloads without the
+             * field default to true so existing sessions are unaffected. */}
+            {(me.role === "admin" || (me.can_move ?? true)) && (
+              <NavLink to="/bulk-move">Bulk move</NavLink>
+            )}
             {me.role === "admin" && (
               <>
                 <NavLink to="/zones">Zones</NavLink>
