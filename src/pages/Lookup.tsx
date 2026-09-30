@@ -90,7 +90,11 @@ export default function Lookup() {
     fmtTurnaround(result.turnaround_days, result.turnaround_days_high);
 
   return (
-    <div className={`page lookup${result ? " has-result" : ""}`}>
+    <div
+      className={`page lookup${result ? " has-result" : ""}${
+        result?.is_non_psa ? " non-psa" : ""
+      }`}
+    >
       <h1>Order lookup</h1>
       {!result && (
         <p className="lede">
@@ -228,44 +232,52 @@ export default function Lookup() {
               </div>
             )}
 
-            {/* Block 1: order identifiers */}
-            <div className="info-block">
-              {result.service_level && (
-                <Field label="Service">{result.service_level}</Field>
-              )}
-              <Field label="Items">{fmtItems(result.items)}</Field>
-              {result.submission_number && (
-                <Field label="Submission">
+            {/* Block 1: order identifiers — Service / Submission / Shipment / Items.
+             * Same 4-column layout for PSA and non-PSA; a dash fills any missing
+             * field so column positions stay consistent. */}
+            <div className="info-block info-block--4">
+              <Field label="Service">
+                {result.service_level || "—"}
+              </Field>
+              <Field label="Submission">
+                {result.submission_number ? (
                   <span className="mono">{result.submission_number}</span>
-                </Field>
-              )}
-              {result.shipment && (
-                <Field label="Shipment">{result.shipment}</Field>
-              )}
+                ) : (
+                  "—"
+                )}
+              </Field>
+              <Field label="Shipment">{result.shipment || "—"}</Field>
+              <Field label="Items">{fmtItems(result.items)}</Field>
             </div>
 
-            {/* Block 2: customer */}
+            {/* Block 2: customer. Same 4-column grid as Block 1 so Customer
+             * aligns under Service, Phone under Submission, and Email spans
+             * the last two tracks (Shipment + Items). */}
             {(result.owner_display_name ||
               result.owner_email ||
               result.owner_phone) && (
-              <div className="info-block">
-                {result.owner_display_name && (
-                  <Field label="Customer">{result.owner_display_name}</Field>
-                )}
-                {result.owner_email && (
-                  <Field label="Email" wide>
-                    <a href={`mailto:${result.owner_email}`}>
-                      {result.owner_email}
-                    </a>
-                  </Field>
-                )}
-                {result.owner_phone && (
-                  <Field label="Phone">
+              <div className="info-block info-block--4">
+                <Field label="Customer">
+                  {result.owner_display_name || "—"}
+                </Field>
+                <Field label="Phone">
+                  {result.owner_phone ? (
                     <a href={`tel:${result.owner_phone}`}>
                       {result.owner_phone}
                     </a>
-                  </Field>
-                )}
+                  ) : (
+                    "—"
+                  )}
+                </Field>
+                <Field label="Email" wide>
+                  {result.owner_email ? (
+                    <a href={`mailto:${result.owner_email}`}>
+                      {result.owner_email}
+                    </a>
+                  ) : (
+                    "—"
+                  )}
+                </Field>
               </div>
             )}
 

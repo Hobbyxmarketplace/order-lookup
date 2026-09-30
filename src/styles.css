@@ -277,6 +277,10 @@ input:focus, select:focus, textarea:focus {
 
 .page { max-width: 720px; margin: 0 auto; padding: 0 var(--gutter); }
 .page.lookup.has-result { max-width: 1100px; }
+/* Non-PSA cards have no stepper column — keep the page narrower so the
+ * single-column card fills the width naturally instead of floating in a
+ * sea of empty space. */
+.page.lookup.has-result.non-psa { max-width: 720px; }
 .page.lookup.has-result h1 { font-size: 22px; margin-bottom: var(--s-md); }
 .page.lookup.has-result .lookup-form { margin-bottom: var(--s-sm); }
 
@@ -354,8 +358,8 @@ input:focus, select:focus, textarea:focus {
   gap: var(--s-lg);
   align-items: start;
 }
-/* Non-PSA card: no stepper column, keep the same max-width feel. */
-.order-card.single-col { max-width: 720px; }
+/* Non-PSA card: no stepper column. Card fills its (already-narrow) page. */
+.order-card.single-col { display: block; }
 .order-main { min-width: 0; }
 
 .progress-title {
@@ -389,6 +393,16 @@ input:focus, select:focus, textarea:focus {
   border-bottom: 1px dashed var(--border);
 }
 .info-block:last-of-type { border-bottom: none; padding-bottom: 0; }
+/* Order-identifier row: Service | Submission | Shipment | Items.
+ * Uneven track sizes so Shipment (widest text) doesn't wrap while Submission
+ * and Items (both narrow values) don't hog space. */
+.info-block--4 {
+  grid-template-columns:
+    minmax(0, 1.4fr)  /* Service */
+    minmax(0, 1fr)    /* Submission */
+    minmax(0, 1.6fr)  /* Shipment */
+    minmax(0, 0.8fr); /* Items */
+}
 .field { min-width: 0; }
 .field--wide { grid-column: span 2; }
 .field-k {
@@ -1056,7 +1070,8 @@ button.danger {
   }
   .site-nav { order: 5; width: 100%; margin-left: 0; gap: var(--s-md); }
   .site-header .spacer { display: none; }
-  .info-block {
+  .info-block,
+  .info-block--4 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--s-xs) var(--s-md);
   }
@@ -1070,7 +1085,8 @@ button.danger {
   .lookup-form { flex-direction: column; align-items: stretch; }
   .lookup-form input { width: 100%; }
   .lookup-form button { width: 100%; }
-  .info-block { grid-template-columns: 1fr; }
+  .info-block,
+  .info-block--4 { grid-template-columns: 1fr; }
   .field--wide { grid-column: span 1; }
   .order-title { flex-wrap: wrap; row-gap: var(--s-2xs); }
   .order-service.mono { font-size: 15px; }

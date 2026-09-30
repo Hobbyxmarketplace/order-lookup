@@ -149,8 +149,8 @@ export default function Zones() {
               <tr>
                 <th>Name</th>
                 <th>Default</th>
-                <th title="Invoices currently in Ready-for-Pickup status that are assigned to this zone">
-                  Ready for pickup
+                <th title="All invoices assigned to this zone (PSA Ready-for-Pickup plus BGS/CGC/GEA intake)">
+                  Invoices
                 </th>
                 <th className="col-created">Created</th>
                 <th />
