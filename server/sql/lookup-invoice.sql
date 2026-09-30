@@ -70,7 +70,9 @@ SELECT
   MAX(pod.dateCompleted) AS date_completed,
   op.pickup_ready_at AS pickup_ready_at,
   ip.pickup_date AS pickup_date,
-  COALESCE(MAX(pod.serviceLevel), MAX(st.`ServiceLevel(ME)`)) AS service_level,
+  -- App parity: service name shown to users comes from psa_submissions.ServiceLevel(ME).
+  -- psa_ordersDetail.serviceLevel is loaded above but only used to detect reholder/CRC.
+  MAX(st.`ServiceLevel(ME)`) AS service_level,
   CASE
     WHEN LOWER(COALESCE(MAX(pod.serviceLevel), '')) LIKE '%reholder%'
       OR LOWER(COALESCE(MAX(pod.serviceLevel), '')) LIKE '%crc%'

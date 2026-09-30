@@ -173,6 +173,13 @@ async function lookupNonPsa(invoice: string): Promise<LookupResult | null> {
   if (!row) return null;
 
   const parsed = parseServiceLevel(row.service_level_raw);
+
+  // PSA source of truth is psa_certOwners. If this intake row parses as PSA
+  // (or has no recognisable company), the invoice is either a PSA order that
+  // never made it into the PSA pipeline or a garbage row — treat as 404.
+  if (parsed.company === "PSA" || parsed.company === "Unknown") {
+    return null;
+  }
   const displayName = [row.first_name, row.last_name]
     .filter((s) => s && s.trim())
     .join(" ") || null;
