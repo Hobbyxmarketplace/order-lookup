@@ -587,6 +587,62 @@ input:focus, select:focus, textarea:focus {
   margin-top: var(--s-lg);
 }
 
+/* Password field with a right-aligned show/hide toggle. Scoped under
+ * .login-card so the selector beats `.login-card button` on specificity
+ * (both are class + tag), otherwise the toggle inherits width:100% and
+ * gets stretched to the full width of the input. */
+.login-card .password-field {
+  position: relative;
+}
+.login-card .password-field input {
+  padding-right: 42px;
+}
+.login-card .password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  /* GPU-friendly centering pin. `translate` (not `transform`) lets
+   * :hover/:active change background without ever touching the offset. */
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-muted);
+  cursor: pointer;
+  /* Kill browser defaults that shift the button on tap / click. */
+  -webkit-tap-highlight-color: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  line-height: 1;
+  vertical-align: middle;
+}
+.login-card .password-toggle:hover {
+  color: var(--card-fg);
+  background: rgba(255, 255, 255, 0.06);
+}
+.login-card .password-toggle:active,
+.login-card .password-toggle:focus {
+  /* Prevent the default UA "pressed" downshift and stray outlines. */
+  transform: translateY(-50%);
+  outline: none;
+}
+.login-card .password-toggle:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+.login-card .password-toggle svg {
+  display: block;
+  width: 20px;
+  height: 20px;
+}
+
 /* ==============================================================
    Customer chips in the order header
    ============================================================== */
