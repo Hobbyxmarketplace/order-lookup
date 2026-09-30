@@ -168,7 +168,13 @@ export async function lookupInvoice(
 }
 
 async function lookupNonPsa(invoice: string): Promise<LookupResult | null> {
-  const rows = await query<NonPsaRow>(NONPSA_SQL, [invoice]);
+  const digitsOnly = invoice.replace(/\D/g, "");
+  // SQL: exact-match, digits-only match, exact-match (again for ORDER BY).
+  const rows = await query<NonPsaRow>(NONPSA_SQL, [
+    invoice,
+    digitsOnly,
+    invoice,
+  ]);
   const row = rows[0];
   if (!row) return null;
 
