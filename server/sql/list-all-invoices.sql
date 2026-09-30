@@ -13,12 +13,13 @@
 
 SELECT
   invoice_number,
-  MAX(company)         AS company,
-  MAX(pickup_ready_at) AS pickup_ready_at,
-  MAX(submitted_at)    AS submitted_at,
-  MAX(submission_id)   AS submission_number,
-  MAX(owner_email)     AS owner_email,
-  MAX(owner_name)      AS owner_name
+  MAX(company)           AS company,
+  MAX(pickup_ready_at)   AS pickup_ready_at,
+  MAX(submitted_at)      AS submitted_at,
+  MAX(submission_id)     AS submission_number,
+  MAX(owner_email)       AS owner_email,
+  MAX(owner_name)        AS owner_name,
+  MAX(service_level_raw) AS service_level_raw
 FROM (
   -- PSA Ready-for-Pickup rows (one per invoice, aggregated in the subquery)
   SELECT
@@ -28,7 +29,8 @@ FROM (
     CAST(NULL AS DATETIME)        AS submitted_at,
     CONVERT(MIN(co.SubmissionNumber) USING utf8mb4) COLLATE utf8mb4_unicode_ci AS submission_id,
     CONVERT(MIN(co.`OwnerEmail(ME)`) USING utf8mb4) COLLATE utf8mb4_unicode_ci AS owner_email,
-    CAST(NULL AS CHAR CHARACTER SET utf8mb4) COLLATE utf8mb4_unicode_ci AS owner_name
+    CAST(NULL AS CHAR CHARACTER SET utf8mb4) COLLATE utf8mb4_unicode_ci AS owner_name,
+    CAST(NULL AS CHAR CHARACTER SET utf8mb4) COLLATE utf8mb4_unicode_ci AS service_level_raw
   FROM psa_certOwners AS co
   JOIN psa_hobbyx_order_pickup AS op
     ON op.submission_number = CAST(co.SubmissionNumber AS UNSIGNED)
@@ -49,7 +51,8 @@ FROM (
 
   UNION ALL
 
-  -- Non-PSA / intake rows
+  -- Non-PSA / intake rows (BGS, CGC, GEA only — PSA rows in this table are
+  -- ignored because the PSA pipeline is the source of truth for PSA).
   SELECT
     CONVERT(d.submission_id USING utf8mb4) COLLATE utf8mb4_unicode_ci AS invoice_number,
     CONVERT(UPPER(TRIM(SUBSTRING_INDEX(d.service_level, ' - ', 1))) USING utf8mb4) COLLATE utf8mb4_unicode_ci AS company,
@@ -57,9 +60,11 @@ FROM (
     COALESCE(d.submitted_at, d.submission_date)     AS submitted_at,
     CONVERT(d.submission_id USING utf8mb4) COLLATE utf8mb4_unicode_ci AS submission_id,
     CONVERT(d.email USING utf8mb4) COLLATE utf8mb4_unicode_ci AS owner_email,
-    CONVERT(TRIM(CONCAT_WS(' ', d.first_name, d.last_name)) USING utf8mb4) COLLATE utf8mb4_unicode_ci AS owner_name
+    CONVERT(TRIM(CONCAT_WS(' ', d.first_name, d.last_name)) USING utf8mb4) COLLATE utf8mb4_unicode_ci AS owner_name,
+    CONVERT(d.service_level USING utf8mb4) COLLATE utf8mb4_unicode_ci AS service_level_raw
   FROM order_lookup_invoice_details AS d
   WHERE d.submission_id <> 'T'
+    AND UPPER(TRIM(SUBSTRING_INDEX(d.service_level, ' - ', 1))) IN ('BGS','CGC','GEA')
     AND (
       ? = ''
       OR UPPER(d.submission_id) LIKE UPPER(CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci)

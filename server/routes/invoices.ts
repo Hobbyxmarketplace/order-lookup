@@ -22,6 +22,8 @@ function moveCtx(req: import("express").Request): MoveContext {
   };
 }
 
+import { extractQuantity } from "../lib/serviceLevel.js";
+
 const router = Router();
 
 const LIST_ALL_SQL = loadSql("list-all-invoices");
@@ -162,6 +164,7 @@ router.get("/invoices/ready-for-pickup", authGate, async (req, res) => {
       submission_number: string | number | null;
       owner_email: string | null;
       owner_name: string | null;
+      service_level_raw: string | null;
     }>(LIST_ALL_SQL, [
       search, like, digitsLike,
       search, like, digitsLike,
@@ -201,6 +204,12 @@ router.get("/invoices/ready-for-pickup", authGate, async (req, res) => {
       const z = zoneMap.get(key) ?? defaultZone;
       const company = (r.company ?? "Unknown").toUpperCase();
       const receivedAt = r.pickup_ready_at ?? r.submitted_at ?? null;
+      // PSA rows get the count from the batch query; non-PSA rows parse their
+      // service_level string for Quantity / 數量.
+      const items =
+        company === "PSA"
+          ? itemsMap.get(key) ?? null
+          : extractQuantity(r.service_level_raw);
       return {
         invoice: r.invoice_number,
         company,
@@ -212,7 +221,7 @@ router.get("/invoices/ready-for-pickup", authGate, async (req, res) => {
         // Legacy field kept for backwards-compat with the current client.
         pickup_ready_at: r.pickup_ready_at,
         zone: { id: z.id, name: z.name },
-        items: itemsMap.get(key) ?? null,
+        items,
       };
     });
 
