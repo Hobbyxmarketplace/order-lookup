@@ -101,6 +101,21 @@ d("GET /api/lookup", () => {
     expect(r.status).toBe(200);
     expect(r.body.invoice).toBe("H136260");
   });
+
+  // Regression: digits-only search must still populate items count.
+  // Previously count-items.sql was called with the raw '136582' and
+  // returned 0 because it did exact match, not a digits-only fallback.
+  it("digits-only search returns items count identical to prefixed search", async () => {
+    const [prefixed, digits] = await Promise.all([
+      request(app).get("/api/lookup?invoice=H136582").set("Cookie", adminCookie),
+      request(app).get("/api/lookup?invoice=136582").set("Cookie", adminCookie),
+    ]);
+    expect(prefixed.status).toBe(200);
+    expect(digits.status).toBe(200);
+    expect(digits.body.invoice).toBe(prefixed.body.invoice);
+    expect(digits.body.items).toBe(prefixed.body.items);
+    expect(digits.body.items).toBeGreaterThan(0);
+  });
 });
 
 d("Zone attaches only on Ready-for-Pickup, follows moves", () => {

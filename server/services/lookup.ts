@@ -146,10 +146,14 @@ export async function lookupInvoice(
     result = { ...result, zone: { id: z.id, name: z.name } };
   }
 
-  // Attach PSA item count from psa_certOwners.
+  // Attach PSA item count from psa_certOwners. Use the canonical invoice
+  // number returned by the lookup query, not the raw user input — otherwise
+  // digits-only searches (e.g. '141957' → 'H141957') miss the cert-count join.
   if (result) {
     try {
-      const [c] = await query<{ items: number }>(COUNT_ITEMS_SQL, [invoice]);
+      const [c] = await query<{ items: number }>(COUNT_ITEMS_SQL, [
+        result.invoice,
+      ]);
       result = { ...result, items: c?.items ?? null };
     } catch (e: any) {
       console.error("[lookup] item count failed:", e.message);
