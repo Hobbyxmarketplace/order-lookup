@@ -394,12 +394,25 @@ input:focus, select:focus, textarea:focus {
 }
 .info-block:last-of-type { border-bottom: none; padding-bottom: 0; }
 /* Order-identifier row: Service | Submission | Shipment | Items.
- * Uneven track sizes so Shipment (widest text) doesn't wrap while Submission
- * and Items (both narrow values) don't hog space. */
+ *
+ * Uses explicit weighted tracks on wide screens so columns always sit
+ * on one row with Shipment taking the extra width (so "Jun 26 - 1st
+ * Shipment" never wraps). Below the breakpoints further down this file,
+ * the whole grid collapses to 2 then 1 columns.
+ */
 .info-block--4 {
   grid-template-columns:
     minmax(0, 1.4fr)  /* Service */
     minmax(0, 1fr)    /* Submission */
+    minmax(0, 1.6fr)  /* Shipment */
+    minmax(0, 0.8fr); /* Items */
+}
+/* Non-PSA invoices skip the Submission column. Customer row below uses the
+ * same 3-track grid so Customer / Phone / Email line up with Service /
+ * Shipment / Items. */
+.info-block--3 {
+  grid-template-columns:
+    minmax(0, 1.4fr)  /* Service */
     minmax(0, 1.6fr)  /* Shipment */
     minmax(0, 0.8fr); /* Items */
 }
@@ -641,6 +654,60 @@ input:focus, select:focus, textarea:focus {
   display: block;
   width: 20px;
   height: 20px;
+}
+
+/* ==============================================================
+   Inline redacted value with click-to-reveal toggle (used for the
+   submission number on the lookup card).
+   ============================================================== */
+.redacted-value {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-xs);
+  /* Keep the mask + eye on one line even when the column is tight.
+   * Without this the bullet mask would soft-wrap mid-value. */
+  white-space: nowrap;
+  max-width: 100%;
+}
+.redacted-value .mono {
+  /* No letter-spacing: it widens the mask enough to blow the column.
+   * The mask is already fixed-length so toggle still keeps column stable. */
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+.reveal-toggle {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  line-height: 1;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.reveal-toggle:hover {
+  color: var(--card-fg);
+  background: rgba(255, 255, 255, 0.06);
+}
+.reveal-toggle:active,
+.reveal-toggle:focus {
+  outline: none;
+}
+.reveal-toggle:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+.reveal-toggle svg {
+  width: 16px;
+  height: 16px;
 }
 
 /* ==============================================================
@@ -1126,8 +1193,10 @@ button.danger {
   }
   .site-nav { order: 5; width: 100%; margin-left: 0; gap: var(--s-md); }
   .site-header .spacer { display: none; }
+  /* Tablet: collapse all info blocks to 2 columns. */
   .info-block,
-  .info-block--4 {
+  .info-block--4,
+  .info-block--3 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--s-xs) var(--s-md);
   }
@@ -1142,7 +1211,8 @@ button.danger {
   .lookup-form input { width: 100%; }
   .lookup-form button { width: 100%; }
   .info-block,
-  .info-block--4 { grid-template-columns: 1fr; }
+  .info-block--4,
+  .info-block--3 { grid-template-columns: 1fr; }
   .field--wide { grid-column: span 1; }
   .order-title { flex-wrap: wrap; row-gap: var(--s-2xs); }
   .order-service.mono { font-size: 15px; }

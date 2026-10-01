@@ -2,6 +2,7 @@ import { useState } from "react";
 import { api, LookupResult, type Me } from "../api";
 import Stepper from "../components/Stepper";
 import MoveZoneDialog from "../components/MoveZoneDialog";
+import EyeIcon from "../components/EyeIcon";
 
 function statusSlug(status: string): string {
   return status.toLowerCase().replace(/\s+/g, "-");
@@ -62,9 +63,12 @@ export default function Lookup({ me }: { me: Me }) {
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
+  const [showSubmission, setShowSubmission] = useState(false);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    // Any new lookup should re-redact the submission number.
+    setShowSubmission(false);
     const q = invoice.trim();
     if (!q) return;
     setBusy(true);
@@ -233,31 +237,70 @@ export default function Lookup({ me }: { me: Me }) {
               </div>
             )}
 
-            {/* Block 1: order identifiers — Service / Submission / Shipment / Items.
-             * Same 4-column layout for PSA and non-PSA; a dash fills any missing
-             * field so column positions stay consistent. */}
-            <div className="info-block info-block--4">
-              <Field label="Service">
-                {result.service_level || "—"}
-              </Field>
-              <Field label="Submission">
-                {result.submission_number ? (
-                  <span className="mono">{result.submission_number}</span>
-                ) : (
-                  "—"
-                )}
-              </Field>
-              <Field label="Shipment">{result.shipment || "—"}</Field>
-              <Field label="Items">{fmtItems(result.items)}</Field>
-            </div>
+            {/* Block 1: order identifiers.
+             * PSA has a submission number so we use the 4-col grid with the
+             * redact + eye toggle. Non-PSA invoices (BGS/CGC/GEA) never carry
+             * a submission number, so we drop that column entirely and use
+             * the 3-col grid — cleaner than rendering a permanent em-dash. */}
+            {result.is_non_psa ? (
+              <div className="info-block info-block--3">
+                <Field label="Service">
+                  {result.service_level || "—"}
+                </Field>
+                <Field label="Shipment">{result.shipment || "—"}</Field>
+                <Field label="Items">{fmtItems(result.items)}</Field>
+              </div>
+            ) : (
+              <div className="info-block info-block--4">
+                <Field label="Service">
+                  {result.service_level || "—"}
+                </Field>
+                <Field label="Submission">
+                  {result.submission_number ? (
+                    <span className="redacted-value">
+                      <span className="mono" aria-live="polite">
+                        {showSubmission
+                          ? result.submission_number
+                          : // Fixed-length mask so the surrounding grid
+                            // never jumps when toggled.
+                            "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"}
+                      </span>
+                      <button
+                        type="button"
+                        className="reveal-toggle"
+                        onClick={() => setShowSubmission((v) => !v)}
+                        aria-label={
+                          showSubmission
+                            ? "Hide submission number"
+                            : "Show submission number"
+                        }
+                        aria-pressed={showSubmission}
+                      >
+                        <EyeIcon open={!showSubmission} />
+                      </button>
+                    </span>
+                  ) : (
+                    "—"
+                  )}
+                </Field>
+                <Field label="Shipment">{result.shipment || "—"}</Field>
+                <Field label="Items">{fmtItems(result.items)}</Field>
+              </div>
+            )}
 
-            {/* Block 2: customer. Same 4-column grid as Block 1 so Customer
-             * aligns under Service, Phone under Submission, and Email spans
-             * the last two tracks (Shipment + Items). */}
+            {/* Block 2: customer. Grid tracks mirror Block 1 so columns
+             * line up top-to-bottom in both PSA and non-PSA layouts:
+             *   PSA (4-col):   Customer | Phone | Email (spans Shipment+Items)
+             *   non-PSA (3-col): Customer | Phone | Email (spans Items col)
+             */}
             {(result.owner_display_name ||
               result.owner_email ||
               result.owner_phone) && (
-              <div className="info-block info-block--4">
+              <div
+                className={`info-block ${
+                  result.is_non_psa ? "info-block--3" : "info-block--4"
+                }`}
+              >
                 <Field label="Customer">
                   {result.owner_display_name || "—"}
                 </Field>
