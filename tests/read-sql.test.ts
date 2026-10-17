@@ -8,6 +8,8 @@ describe("loadSql", () => {
   it("loads lookup-invoice.sql and strips SQL comments", () => {
     const sql = loadSql("lookup-invoice");
     expect(sql).toContain("FROM psa_certOwners");
+    expect(sql).toContain("psa_hobbyx_order_pickup_owner");
+    expect(sql).toContain("op.owner_email = LOWER(");
     expect(sql).not.toContain("-- ");
     expect(sql.endsWith(";")).toBe(false);
   });
@@ -20,7 +22,8 @@ describe("loadSql", () => {
 
   it("loads list-ready-for-pickup-all.sql", () => {
     const sql = loadSql("list-ready-for-pickup-all");
-    expect(sql).toContain("psa_hobbyx_order_pickup");
+    expect(sql).toContain("psa_hobbyx_order_pickup_owner");
+    expect(sql).toContain("op.owner_email = LOWER(");
     expect(sql).not.toContain("LIMIT");
   });
 

@@ -33,8 +33,9 @@ export interface LookupResult {
   estimated_completion: string | null;
   estimated_completion_upper: string | null;
 
-  // True when today's date is past the upper-bound estimated completion AND
-  // the order is not yet Ready for Pickup / Picked Up.
+  // True when today's calendar day is after the upper estimated date
+  // (or the single estimate when no upper date exists), the order is still
+  // before Ready for Pickup, and it does not yet have an actual completion date.
   is_delayed: boolean;
 
   // Number of physical items covered by this invoice. For PSA this is the

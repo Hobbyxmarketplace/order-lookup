@@ -100,14 +100,23 @@ export async function lookupInvoice(
     if (v instanceof Date) return v.toISOString();
     return String(v);
   };
-  const estUpperDate = toIsoDate(row?.estimated_completion_upper) ??
+  const upperBound = toIsoDate(row?.estimated_completion_upper) ??
     toIsoDate(row?.estimated_completion);
-
-  const inProgress = row && !(
-    row.status === "Picked Up" || row.status === "Ready for Pickup"
+  const completionDate = toIsoDate(row?.date_completed ?? null);
+  // Completing from the Completed flag carries dateCompleted as status_date.
+  // QA-only Completing leaves status_date empty, so the estimate can still be late.
+  const hasActualCompletion = !!(
+    completionDate &&
+    row?.status === "Completing" &&
+    toIsoDate(row.status_date)
+  );
+  const stillEstimated = row && !(
+    row.status === "Picked Up" ||
+    row.status === "Ready for Pickup" ||
+    hasActualCompletion
   );
 
-  const isDelayed = !!(inProgress && estUpperDate && isAfterCalendar(new Date(), estUpperDate));
+  const isDelayed = !!(stillEstimated && upperBound && isAfterCalendar(new Date(), upperBound));
 
   let result: LookupResult | null = row
     ? {

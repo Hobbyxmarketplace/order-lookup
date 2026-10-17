@@ -14,7 +14,9 @@
 --
 -- Status priority (matches the main app):
 --   1. Picked Up   -- invoice is in psa_hobbyx_invoice_pickup
---   2. Ready for Pickup   -- op.is_pickup_ready = 1
+--   2. Ready for Pickup   -- this invoice owner's row in
+--      psa_hobbyx_order_pickup_owner is ready. No row means not ready.
+--      psa_hobbyx_order_pickup is submission-wide and is not used here.
 --   3. PSA pipeline flags (Completing / Grades Ready / Assembly / Grading / ...)
 --   4. Order Arrived   -- st.`Arrived(ME)` = 'yes'
 --   5. Shipping   -- default
@@ -85,8 +87,10 @@ SELECT
   MAX(pod.dateEstCompleted) AS estimated_completion,
   MAX(pod.dateEstCompletedUpperRange) AS estimated_completion_upper
 FROM psa_certOwners AS co
-LEFT JOIN psa_hobbyx_order_pickup AS op
-  ON op.submission_number = CAST(co.SubmissionNumber AS UNSIGNED)
+LEFT JOIN psa_hobbyx_order_pickup_owner AS op
+  ON op.submission_number = co.SubmissionNumber
+ AND op.owner_email = LOWER(co.`OwnerEmail(ME)`)
+ AND op.is_pickup_ready = 1
 LEFT JOIN psa_hobbyx_invoice_pickup AS ip
   ON ip.invoice_number = co.InvoiceNumber COLLATE utf8mb4_unicode_520_ci
 LEFT JOIN psa_submissions AS st
