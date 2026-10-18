@@ -17,7 +17,10 @@
 --   2. Ready for Pickup   -- this invoice owner's row in
 --      psa_hobbyx_order_pickup_owner is ready. No row means not ready.
 --      psa_hobbyx_order_pickup is submission-wide and is not used here.
---   3. PSA pipeline flags (Completing / Grades Ready / Assembly / Grading / ...)
+--   3. PSA pipeline flags, same order as PSA::getStatus():
+--      Completed + shipped → Completing (the app shows Complete as Completing)
+--      QACheck → Completing, before Grades Ready
+--      Grades Ready / Assembly / Grading / Research and ID
 --   4. Order Arrived   -- st.`Arrived(ME)` = 'yes'
 --   5. Shipping   -- default
 
@@ -34,9 +37,9 @@ SELECT
       AND MAX(st.OrderNumber) <> '0'
     ) THEN
       CASE
-        WHEN MAX(pos.Completed) = 1 THEN 'Completing'
-        WHEN MAX(pos.GradesReady) = 1 THEN 'Grades Ready'
+        WHEN MAX(pos.Completed) = 1 AND MAX(po.shipped) = 1 THEN 'Completing'
         WHEN MAX(pos.QACheck) = 1 THEN 'Completing'
+        WHEN MAX(pos.GradesReady) = 1 THEN 'Grades Ready'
         WHEN MAX(pos.Assembly) = 1 THEN 'Assembly'
         WHEN MAX(pos.ResearchAndID) = 1 THEN
           CASE
@@ -55,7 +58,7 @@ SELECT
   CASE
     WHEN ip.invoice_number IS NOT NULL THEN ip.pickup_date
     WHEN op.is_pickup_ready = 1 THEN DATE(op.pickup_ready_at)
-    WHEN MAX(pos.Completed) = 1 THEN MAX(pod.dateCompleted)
+    WHEN MAX(pos.Completed) = 1 AND MAX(po.shipped) = 1 THEN MAX(pod.dateCompleted)
     ELSE NULL
   END AS status_date,
   co.`OwnerEmail(ME)` AS owner_email,

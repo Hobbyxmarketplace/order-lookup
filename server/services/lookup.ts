@@ -103,7 +103,7 @@ export async function lookupInvoice(
   const upperBound = toIsoDate(row?.estimated_completion_upper) ??
     toIsoDate(row?.estimated_completion);
   const completionDate = toIsoDate(row?.date_completed ?? null);
-  // Completing from the Completed flag carries dateCompleted as status_date.
+  // Completing from Completed + shipped carries dateCompleted as status_date.
   // QA-only Completing leaves status_date empty, so the estimate can still be late.
   const hasActualCompletion = !!(
     completionDate &&

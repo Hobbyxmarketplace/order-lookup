@@ -43,7 +43,8 @@ const DESCRIPTIONS: Record<string, string> = {
   grading: "Cards are being graded by PSA.",
   assembly: "Cards are being assembled.",
   gradesReady: "Grades are ready. Order is being finalised.",
-  completing: "Order is being completed and prepared for pickup.",
+  completing:
+    "We're preparing your order. You'll receive an email and a push notification when your order is ready for pickup at HobbyX Store (MongKok).",
   pickupReady: "Order is in the warehouse, waiting for customer pickup.",
   pickedUp: "Order has been picked up by the customer.",
 };
@@ -79,6 +80,14 @@ function statusToStepKey(status: string): string {
   return "orderArrived"; // Shipping and unknown → treat as not-yet-arrived (index 0 dim)
 }
 
+function completingStepDate(r: LookupResult): string | null {
+  if (r.status === "Completing") return r.status_date;
+  if (r.status === "Ready for Pickup" || r.status === "Picked Up") {
+    return r.date_completed;
+  }
+  return null;
+}
+
 export function buildSteps(r: LookupResult): {
   steps: Step[];
   currentIdx: number;
@@ -92,7 +101,9 @@ export function buildSteps(r: LookupResult): {
 
   const dates: Record<string, string | null> = {
     orderArrived: r.date_arrived,
-    completing: r.date_completed,
+    // Same as the app: no date for QA Completing. dateCompleted appears only
+    // after Completed + shipped, and stays on this step once pickup starts.
+    completing: completingStepDate(r),
     pickupReady: r.pickup_ready_at,
     pickedUp: r.pickup_date,
   };
